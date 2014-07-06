@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -15,6 +16,7 @@ import blog.model.ArgSpec;
 import blog.model.DecisionEvidenceStatement;
 import blog.model.Evidence;
 import blog.model.FuncAppTerm;
+import blog.model.SkolemConstant;
 import blog.model.Term;
 import blog.world.AbstractPartialWorld;
 import blog.world.PartialWorld;
@@ -42,7 +44,13 @@ public class FiniteStatePolicy extends PolicyModel {
 		DecisionEvidenceStatement a = (DecisionEvidenceStatement) action.getStoredEvidence().getDecisionEvidence().iterator().next();
 		FuncAppTerm f = ((FuncAppTerm) a.getLeftSide());
 		ArgSpec[] args = f.getArgs();
-		requiredTerms.addAll(Arrays.asList(args));
+		//requiredTerms.addAll(Arrays.asList(args));
+		for (ArgSpec arg : args) {
+			if (!(arg instanceof FuncAppTerm)) continue;
+			FuncAppTerm fat = (FuncAppTerm) arg;
+			if ((fat.getFunction() instanceof SkolemConstant)) requiredTerms.add(arg);
+			
+		}
 		for (LiftedEvidence e : successors.keySet()) {
 			Set<ArgSpec> futureRequiredTerms = new HashSet<ArgSpec>(successors.get(e).requiredTerms);
 			Set<? extends BayesNetVar> vars = e.getEvidence(0).getEvidenceVars(); //TODO
@@ -118,8 +126,14 @@ public class FiniteStatePolicy extends PolicyModel {
 	
 	public Boolean isApplicable(AbstractPartialWorld w) {
 		Map<BayesNetVar, BayesNetVar> observables = w.getObservableMap();
+		List<Term> terms = w.getSkolemConstantTerms();
 		for (ArgSpec s : requiredTerms) {
 			Term t = (Term) s;
+			
+			//System.out.println(terms);
+			//System.out.println(requiredTerms);
+			if (!terms.contains(t)) return false;
+			/*
 			BayesNetVar var = s.getVariable();
 			if (!observables.containsKey(var)) {
 				Object o = w.getValue(var);
@@ -128,6 +142,7 @@ public class FiniteStatePolicy extends PolicyModel {
 				if (!t.getType().getGuaranteedObjects().contains(o))
 					return false;
 			}
+			*/
 		}
 		return true;
 	}

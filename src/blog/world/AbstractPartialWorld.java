@@ -74,6 +74,7 @@ import blog.model.NonGuaranteedObject;
 import blog.model.POP;
 import blog.model.RandomFunction;
 import blog.model.SkolemConstant;
+import blog.model.Term;
 import blog.objgen.AbstractObjectSet;
 import blog.objgen.ObjectIterator;
 import blog.objgen.ObjectSet;
@@ -1114,6 +1115,19 @@ public abstract class AbstractPartialWorld implements PartialWorld {
 		}
 	}
 	
+	List<Term> skolemConstantTerms;
+	public List<Term> getSkolemConstantTerms() {
+		if (skolemConstantTerms == null) {
+			skolemConstantTerms = new ArrayList<Term>();
+			List<Term> terms = new ArrayList<Term>();
+			for (SkolemConstant c : skolemConstants) {
+				skolemConstantTerms.add(c.rv().getCanonicalTerm());
+			}
+		}
+		return skolemConstantTerms;
+	}
+
+	
 	public Set<BasicVar> getChangedVars() {
 		return changedVarToValue.keySet();
 	}
@@ -1257,15 +1271,17 @@ public abstract class AbstractPartialWorld implements PartialWorld {
 				
 				// if variable contains a non-guaranteed object, skip it for now.
 				// use lifted comparison later.
-				Object[] args = v.args();
-				boolean containsNgo = false;
-				for (Object arg : args) {
-					if (arg instanceof NonGuaranteedObject) {
-						containsNgo = true;
-						break;
+				if (UBT.liftedStateComparison) {
+					Object[] args = v.args();
+					boolean containsNgo = false;
+					for (Object arg : args) {
+						if (arg instanceof NonGuaranteedObject) {
+							containsNgo = true;
+							break;
+						}
 					}
+					if (containsNgo) continue;
 				}
-				if (containsNgo) continue;
 			}
 			
 			//System.out.println("Compare? " + v);
@@ -1281,7 +1297,7 @@ public abstract class AbstractPartialWorld implements PartialWorld {
 				rtn = rtn && (otherWorld.changedVarToValue.containsKey(v) && otherWorld.changedVarToValue.get(v).equals(changedVarToValue.get(v)));
 			}*/
 		}
-		if (!compareNgos(otherWorld)) {
+		if (UBT.liftedStateComparison && !compareNgos(otherWorld)) {
 			return false;
 		}
 		
@@ -1308,11 +1324,7 @@ public abstract class AbstractPartialWorld implements PartialWorld {
 		UBT.specialTimingData += (timer.elapsedTime());
 		return rtn;
 	}
-	/*
-	public boolean equals (Object o){
-		return this.innerStateEquals((AbstractPartialWorld) o);
-	}
-	*/
+
 	/**
 	 * only basic vars are considered
 	 */
@@ -1350,16 +1362,17 @@ public abstract class AbstractPartialWorld implements PartialWorld {
 					} else
 						continue;
 				}
-				
-				Object[] args = v.args();
-				boolean containsNgo = false;
-				for (Object arg : args) {
-					if (arg instanceof NonGuaranteedObject) {
-						containsNgo = true;
-						break;
+				if (UBT.liftedStateComparison) {
+					Object[] args = v.args();
+					boolean containsNgo = false;
+					for (Object arg : args) {
+						if (arg instanceof NonGuaranteedObject) {
+							containsNgo = true;
+							break;
+						}
 					}
+					if (containsNgo) continue;
 				}
-				if (containsNgo) continue;
 			}
 			
 			//System.out.println(v);

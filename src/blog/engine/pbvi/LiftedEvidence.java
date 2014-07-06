@@ -11,6 +11,7 @@ import blog.DBLOGUtil;
 import blog.bn.BayesNetVar;
 import blog.bn.DerivedVar;
 import blog.bn.RandFuncAppVar;
+import blog.engine.onlinePF.inverseBucket.UBT;
 import blog.model.ArgSpec;
 import blog.model.EqualityFormula;
 import blog.model.BuiltInTypes;
@@ -22,7 +23,6 @@ import blog.model.RandomFunction;
 import blog.model.SkolemConstant;
 import blog.model.SymbolEvidenceStatement;
 import blog.model.Term;
-import blog.model.SymbolTerm;
 import blog.model.ValueEvidenceStatement;
 
 /**
@@ -46,6 +46,13 @@ public class LiftedEvidence {
 	}
 	
 	/**
+	 * If there's no lifted history given, 
+	 * this evidence will have its timestep replaced by 0 
+	 * (representing any t so that its time agnostic).
+	 * 
+	 * Otherwise, if lifted history is given, 
+	 * evidence containing ground objects are replaced by LiftedProperties
+	 * 
 	 * @param evidence
 	 */
 	public LiftedEvidence(Evidence evidence, Belief b, LiftedProperties liftedHistory) {
@@ -78,77 +85,78 @@ public class LiftedEvidence {
 		Set<DerivedVar> liftedVars = new HashSet<DerivedVar>();
 		
 		boolean hasLifted = false;
-		for (Object stmt : statements) {
-			BayesNetVar var = null; 
-			Object value = null; 
-		
-			if (stmt instanceof ValueEvidenceStatement) {
-				var = ((ValueEvidenceStatement) stmt).getObservedVar();
-				value = ((ValueEvidenceStatement) stmt).getObservedValue();
-			} else if (stmt instanceof DecisionEvidenceStatement) {
-				var = ((DecisionEvidenceStatement) stmt).getObservedVar();
-				value = ((DecisionEvidenceStatement) stmt).getObservedValue();
-			} else {
-				System.err.println("LiftedEvidence: " + stmt + " not a ValueEvidenceStatement or DecisionEvidenceStatement");
-				System.exit(1);
-			}
-			
-			if (var instanceof DerivedVar) {
-				ArgSpec argSpec = ((DerivedVar) var).getArgSpec();
-				if (argSpec instanceof EqualityFormula) {
-					argSpec = ((EqualityFormula) argSpec).getTerm1();
-					liftedVars.add((DerivedVar) var);
-					continue;
-				} 
-				if (!(argSpec instanceof FuncAppTerm)) {
-					System.out.println("not a func app" + argSpec);
-					continue;
+		if (UBT.liftedPbvi) {
+			for (Object stmt : statements) {
+				BayesNetVar var = null; 
+				Object value = null; 
+
+				if (stmt instanceof ValueEvidenceStatement) {
+					var = ((ValueEvidenceStatement) stmt).getObservedVar();
+					value = ((ValueEvidenceStatement) stmt).getObservedValue();
+				} else if (stmt instanceof DecisionEvidenceStatement) {
+					var = ((DecisionEvidenceStatement) stmt).getObservedVar();
+					value = ((DecisionEvidenceStatement) stmt).getObservedValue();
+				} else {
+					System.err.println("LiftedEvidence: " + stmt + " not a ValueEvidenceStatement or DecisionEvidenceStatement");
+					System.exit(1);
 				}
-			
-				FuncAppTerm term = (FuncAppTerm) argSpec;
-				RandomFunction function = null;
-				if (term.getFunction() instanceof blog.model.RandomFunction)
-					function = (RandomFunction) term.getFunction();
-				else if (term.getFunction() instanceof blog.model.DecisionFunction) {
-					DecisionFunction f = (DecisionFunction) term.getFunction();
-					function = new RandomFunction(f.getName(), Arrays.asList(f.getArgTypes()), f.getRetType(), null);
-					//System.out.println("Decision " + function);
-				} else
-					continue;
-				// if an observable_ function, skip
-				//if (function.getObservableFun() == null) continue;
-				
-				// Search for non-guaranteed symbols
-				ArgSpec[] args = term.getArgs();
-				if (args.length == 0) {
-					args = new ArgSpec[1];
-					args[0] = term; 
-				}
-				List<Object> newArgs = new ArrayList<Object>();
-				boolean hasNgo = false;
-				for (ArgSpec arg : args) {
-					newArgs.add(arg); //using symbol object instead
-					if (!(arg instanceof FuncAppTerm)) continue;
-					FuncAppTerm fat = (FuncAppTerm) arg;
-					if (!(fat.getFunction() instanceof SkolemConstant)) continue;
-					hasNgo = true;
-					liftedProperties.addObject(fat); //using symbol object instead
-					//liftedProperties.addObject(newArg);
-					//}
-				}
-				if (hasNgo) {
-					// NOTE: the following RandFuncAppVar is not "valid" in the sense that
-					// its arguments contain symbols rather than their corresponding objects.
-					// TODO: change  liftedProperties to use Terms instead of Bayes net vars
-					RandFuncAppVar newVar = new RandFuncAppVar(function, newArgs);
-					
-					liftedProperties.addProperty(newVar, value);
-					hasLifted = true;
-					liftedVars.add((DerivedVar) var);
+
+				if (var instanceof DerivedVar) {
+					ArgSpec argSpec = ((DerivedVar) var).getArgSpec();
+					if (argSpec instanceof EqualityFormula) {
+						argSpec = ((EqualityFormula) argSpec).getTerm1();
+						liftedVars.add((DerivedVar) var);
+						continue;
+					} 
+					if (!(argSpec instanceof FuncAppTerm)) {
+						System.out.println("not a func app" + argSpec);
+						continue;
+					}
+
+					FuncAppTerm term = (FuncAppTerm) argSpec;
+					RandomFunction function = null;
+					if (term.getFunction() instanceof blog.model.RandomFunction)
+						function = (RandomFunction) term.getFunction();
+					else if (term.getFunction() instanceof blog.model.DecisionFunction) {
+						DecisionFunction f = (DecisionFunction) term.getFunction();
+						function = new RandomFunction(f.getName(), Arrays.asList(f.getArgTypes()), f.getRetType(), null);
+						//System.out.println("Decision " + function);
+					} else
+						continue;
+					// if an observable_ function, skip
+					//if (function.getObservableFun() == null) continue;
+
+					// Search for non-guaranteed symbols
+					ArgSpec[] args = term.getArgs();
+					if (args.length == 0) {
+						args = new ArgSpec[1];
+						args[0] = term; 
+					}
+					List<Object> newArgs = new ArrayList<Object>();
+					boolean hasNgo = false;
+					for (ArgSpec arg : args) {
+						newArgs.add(arg); //using symbol object instead
+						if (!(arg instanceof FuncAppTerm)) continue;
+						FuncAppTerm fat = (FuncAppTerm) arg;
+						if (!(fat.getFunction() instanceof SkolemConstant)) continue;
+						hasNgo = true;
+						liftedProperties.addObject(fat); //using symbol object instead
+						//liftedProperties.addObject(newArg);
+						//}
+					}
+					if (hasNgo) {
+						// NOTE: the following RandFuncAppVar is not "valid" in the sense that
+						// its arguments contain symbols rather than their corresponding objects.
+						// TODO: change liftedProperties to use Terms instead of Bayes net vars
+						RandFuncAppVar newVar = new RandFuncAppVar(function, newArgs);
+
+						liftedProperties.addProperty(newVar, value);
+						hasLifted = true;
+						liftedVars.add((DerivedVar) var);
+					}
 				}
 			}
 		}
-		
 		//if (hasLifted)
 			//System.out.println("Lifted" + liftedProperties);
 		

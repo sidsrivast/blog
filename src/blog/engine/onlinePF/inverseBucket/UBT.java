@@ -62,6 +62,8 @@ public class UBT {
 	//public static FileCommunicator obsOutput;
 	//public static BufferedReader obsReader;
 	//public static boolean singleObs = false;
+	public static boolean liftedPbvi;
+	public static boolean liftedStateComparison;
 	
 	
 	
