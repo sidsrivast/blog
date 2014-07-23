@@ -244,8 +244,8 @@ public class ObservabilitySignature {
 	}
 	public static ObservabilitySignature getOSbyIndex(int index){
 		ObservabilitySignature os = IndextoOS.get(index);
-		if (os.myIndex!=index){
-			System.err.println("error with index");
+		if (os.myIndex != index){
+			System.err.println("ObservabilitySignature.getOSbyIndex: error with index");
 			System.exit(1);
 		}
 			

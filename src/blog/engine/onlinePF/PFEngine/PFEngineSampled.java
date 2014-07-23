@@ -98,8 +98,10 @@ public class PFEngineSampled extends PFEngineOnline{
 		String evs = selectedOS.prepareEvidence2(this.model);
 		ev = selectedOS.getEvidence();
 		ev.checkTypesAndScope(model);
-		if (ev.compile()!=0)
+		if (ev.compile() != 0) {
+			System.err.println("PFEngineSampled.retakeObservability2: errors compiling" + ev);
 			System.exit(1);
+		}
 		for (Particle o : particles){
 			TimedParticle p = (TimedParticle) o;
 			p.unInstantiateObservables(selectedOS);
@@ -184,8 +186,10 @@ public class PFEngineSampled extends PFEngineOnline{
 		ev.checkTypesAndScope(model);
 		Timer.record("retakeObs.checkTypesAndScope");
 		Timer.start("retakeObs.compile");
-		if (ev.compile()!=0)
+		if (ev.compile() != 0) {
+			System.err.println("PFEngineSampled.retakeObservability: errors compiling" + ev);
 			System.exit(1);
+		}
 		Timer.record("retakeObs.compile");
 		if (UBT.obsOutput != null) {
 			for (Object o : ev.getValueEvidence())
