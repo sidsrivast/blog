@@ -578,7 +578,7 @@ public class OUPBVI {
 		//System.out.println("Usage: modelFile queryFile numParticles horizon numBeliefs (seed)");
 		blog.common.cmdline.Parser.setProgramDesc("OUPBVI");
 		String usageString = "Usage: modelFile -q queryFile -n numParticles " +
-				"-t horizon -b numBeliefs -r seed -d -p policyToEvaluate -perseus -lifted";
+				"-t horizon -b numBeliefs -r seed -d -p policyToEvaluate --perseus --lifted";
 		blog.common.cmdline.Parser.setUsageLine(usageString);
 		
 		if (args.length == 0) {
