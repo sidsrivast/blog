@@ -41,8 +41,8 @@ public class LiftedEvidence {
 	private LiftedProperties prevLiftedProperties;
 	private LiftedProperties liftedProperties;
 
-	public LiftedEvidence(Evidence evidence, Belief b) {
-		this(evidence, null, null);
+	public LiftedEvidence(Evidence evidence) {
+		this(evidence, null);
 	}
 	
 	/**
@@ -55,7 +55,7 @@ public class LiftedEvidence {
 	 * 
 	 * @param evidence
 	 */
-	public LiftedEvidence(Evidence evidence, Belief b, LiftedProperties liftedHistory) {
+	public LiftedEvidence(Evidence evidence, LiftedProperties liftedHistory) {
 		liftedProperties = new LiftedProperties();
 
 		int timestep = 0;

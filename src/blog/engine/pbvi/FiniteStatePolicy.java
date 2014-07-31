@@ -249,7 +249,7 @@ public class FiniteStatePolicy extends PolicyModel {
 	public LiftedEvidence getMatchingEvidence(LiftedEvidence liftedEvidence,
 			LiftedProperties policyHistory, Belief b) {
 		for (LiftedEvidence e : successors.keySet()) {
-			LiftedEvidence liftedEvidenceWithHistory = new LiftedEvidence(e.getEvidence(b.getTimestep()), null, policyHistory);
+			LiftedEvidence liftedEvidenceWithHistory = new LiftedEvidence(e.getEvidence(b.getTimestep()), policyHistory);
 			if (liftedEvidenceWithHistory.equals(liftedEvidence))
 				return e;
 			else if (debug) {
@@ -260,6 +260,10 @@ public class FiniteStatePolicy extends PolicyModel {
 			}
 		}
 		return null;
+	}
+
+	public Set<ArgSpec> getRequiredTerms() {
+		return new HashSet<ArgSpec>(requiredTerms);
 	}
 	
 }

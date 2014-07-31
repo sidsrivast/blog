@@ -325,7 +325,7 @@ public class OUPBVI {
 				}
 				LiftedEvidence nextAction = curPolicy.getAction();
 				curBelief = curBelief.sampleNextBelief(nextAction);		
-				LiftedEvidence nextObs = new LiftedEvidence(curBelief.getLatestEvidence(), curBelief);
+				LiftedEvidence nextObs = new LiftedEvidence(curBelief.getLatestEvidence());
 				FiniteStatePolicy nextPolicy = curPolicy.getNextPolicy(nextObs);
 				if (nextPolicy == null && !curBelief.ended() && !curPolicy.isLeafPolicy()) { 
 					nextPolicy = curPolicy.getApplicableNextPolicy(nextObs, curBelief);
@@ -498,7 +498,7 @@ public class OUPBVI {
 		
 		Map<LiftedEvidence, FiniteStatePolicy> bestLiftedPolicyMap = new HashMap<LiftedEvidence, FiniteStatePolicy>();
 		for (Evidence e : bestPolicyMap.keySet()) {
-			bestLiftedPolicyMap.put(new LiftedEvidence(e, b), bestPolicyMap.get(e));
+			bestLiftedPolicyMap.put(new LiftedEvidence(e), bestPolicyMap.get(e));
 		}
 		FiniteStatePolicy newPolicy = new FiniteStatePolicy(bestAction, bestLiftedPolicyMap);
 		System.out.println("singlebackupforbelief.newPolicy.id " + newPolicy.getID());

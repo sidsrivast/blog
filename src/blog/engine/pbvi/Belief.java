@@ -1,7 +1,5 @@
 package blog.engine.pbvi;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -10,8 +8,6 @@ import java.util.Properties;
 import java.util.Set;
 
 import blog.DBLOGUtil;
-import blog.bn.BayesNetVar;
-import blog.bn.RandFuncAppVar;
 import blog.common.Util;
 import blog.engine.onlinePF.ObservabilitySignature;
 import blog.engine.onlinePF.PFEngine.PFEngineSampled;
@@ -20,11 +16,9 @@ import blog.engine.onlinePF.inverseBucket.UBT;
 import blog.model.BuiltInTypes;
 import blog.model.Evidence;
 import blog.model.Function;
-import blog.model.Model;
 import blog.model.SkolemConstant;
 import blog.model.Term;
 import blog.model.Type;
-import blog.model.ValueEvidenceStatement;
 import blog.world.AbstractPartialWorld;
 
 public class Belief {
@@ -39,14 +33,13 @@ public class Belief {
 	 * This set should be the same across all worlds.
 	 * In addition, all worlds should have the same values for the observed vars.
 	 */
-	private Map<SkolemConstant, Evidence> symbolProperties;
-	private List<Evidence> evidenceHistory;
+	private LiftedProperties evidenceHistory;
 	
 	public Belief(PFEngineSampled pf, OUPOMDPModel pomdp) {
 		this(pf, pomdp, null);
 	}
 	
-	public Belief(PFEngineSampled pf, OUPOMDPModel pomdp, List<Evidence> evidenceHistory) {
+	public Belief(PFEngineSampled pf, OUPOMDPModel pomdp, LiftedProperties evidenceHistory) {
 		this.pf = pf;
 		this.pomdp = pomdp;
 		this.evidenceHistory = evidenceHistory;
@@ -56,43 +49,10 @@ public class Belief {
 			State s = new State((AbstractPartialWorld) tp.curWorld, tp.getTimestep());
 			addState(s);
 		}
-		//initSymbolProperties();
 	}
 	
-	private void initSymbolProperties() {
-		if (evidenceHistory == null) {
-			evidenceHistory = new ArrayList<Evidence>();
-			return;
-		}
-
-		symbolProperties = new HashMap<SkolemConstant, Evidence>();
-		State state = (State) Util.getFirst(getStates());
-		List<SkolemConstant> symbols = state.getWorld().getSkolemConstants();
-		for (SkolemConstant s : symbols) {
-			System.out.println("Value of symbol " + s + " " + s.getValue(state.getWorld()));
-			if (!symbolProperties.containsKey(s)) {
-				symbolProperties.put(s, new Evidence());
-			}
-		}
-		for (Evidence e : evidenceHistory) {
-			System.out.println(e);
-			
-			Collection<ValueEvidenceStatement> properties = e.getValueEvidence();
-			for (ValueEvidenceStatement v : properties) {
-				System.out.println(v);
-				RandFuncAppVar var = (RandFuncAppVar) (v.getLeftSide().getVariable());
-				for (Object o : var.args()) {
-					if (symbolProperties.containsKey(o)) {
-						symbolProperties.get(o).addValueEvidence(v);
-					}
-				}
-			}
-		}
-		if (symbolProperties.size() != 0)
-			System.out.println(symbolProperties);
-		/*State s = (State) Util.getFirst(getStates());
-		List<SkolemConstant> symbols = s.getWorld().getSkolemConstants();
-		Map<BayesNetVar, BayesNetVar> observableMap = s.getWorld().getObservableMap();*/
+	public LiftedProperties getEvidenceHistory() {
+		return evidenceHistory;
 	}
 	
 	public int getTimestep() {
@@ -165,9 +125,13 @@ public class Belief {
 			Timer.record("resample");
 		}
 		
-		//List<Evidence> nextEvidenceHistory = new ArrayList<Evidence>(this.evidenceHistory);
-		//nextEvidenceHistory.add(o);
-		Belief nextBelief = new Belief(nextPF, pomdp, null);
+		LiftedProperties nextEvidenceHistory = null;
+		if (this.evidenceHistory != null) {
+			LiftedEvidence liftedAction = new LiftedEvidence(action, this.evidenceHistory);
+			LiftedEvidence liftedObservation = new LiftedEvidence(o, liftedAction.getLiftedProperties());
+			nextEvidenceHistory = liftedObservation.getLiftedProperties();
+		}
+		Belief nextBelief = new Belief(nextPF, pomdp, nextEvidenceHistory);
 		nextBelief.latestReward = reward;
 		nextBelief.latestEvidence = o;
 		
@@ -403,7 +367,14 @@ public class Belief {
 		Properties properties = (Properties) pomdp.getProperties().clone();
 		properties.setProperty("numParticles", "" + numParticles);
 		PFEngineSampled pf = new PFEngineSampled(pomdp.getModel(), properties, state.getWorld(), state.getTimestep());
-		Belief b = new Belief(pf, pomdp);
+		LiftedProperties history = null;
+		if (UBT.liftedPbvi) {
+			history = new LiftedProperties();
+			for (SkolemConstant sk : state.getWorld().getSkolemConstants())
+				history.addObject(sk.rv().getCanonicalTerm());
+		}
+
+		Belief b = new Belief(pf, pomdp, history);
 		return b;
 	}
 }

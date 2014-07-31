@@ -88,24 +88,26 @@ public class FiniteStatePolicyEvaluator {
 			double discount = 1;
 			List<Evidence> curPath = new ArrayList<Evidence>();
 			LiftedProperties policyHistory = new LiftedProperties();
-			LiftedProperties history = new LiftedProperties();
+			//LiftedProperties history = new LiftedProperties();
 			
 			if (UBT.liftedPbvi) {
 				Set<Object> existing = curPolicy.getAction().getLiftedProperties().getObjects();
 				for (Object e : existing)
 					policyHistory.addObject(e);
 
-				for (SkolemConstant sk : state.getWorld().getSkolemConstants())
-					history.addObject(sk.rv().getCanonicalTerm());
+				//for (SkolemConstant sk : state.getWorld().getSkolemConstants())
+				//	history.addObject(sk.rv().getCanonicalTerm());
 
 				if (numPathsPrinted < numTrialsToPrint) {
 					System.out.println("policyHistory " + policyHistory);
-					System.out.println("history " + history);
+					System.out.println("history " + curState.getEvidenceHistory());
 				}
 			}
 			
-			if (!curPolicy.isApplicable(state.getWorld()))
-				return -10000.0;
+			/*if (!curPolicy.isApplicable(curState)) {
+				System.out.println("!!REQUIRED!!" + curPolicy.getRequiredTerms());
+			}*/
+				
 			
 			while (curPolicy != null) {
 				if (curState.ended()) break;
@@ -114,15 +116,17 @@ public class FiniteStatePolicyEvaluator {
 				Evidence timeGroundedAction = nextAction.getEvidence(curState);
 				Evidence groundedAction = timeGroundedAction;
 				
+				LiftedProperties history = curState.getEvidenceHistory();
 				if (UBT.liftedPbvi) {
 					Map<Object, Object> subst = policyHistory.findNgoSubstitution(history);
+					if (subst == null) return -10000D;
 					groundedAction = timeGroundedAction.replace(subst);
 				}
 				curPath.add(groundedAction);
 
 				if (UBT.liftedPbvi) {
-					LiftedEvidence policyLiftedAction = new LiftedEvidence(timeGroundedAction, null, policyHistory);
-					LiftedEvidence liftedAction = new LiftedEvidence(groundedAction, null, history);
+					LiftedEvidence policyLiftedAction = new LiftedEvidence(timeGroundedAction, policyHistory);
+					LiftedEvidence liftedAction = new LiftedEvidence(groundedAction, history);
 
 					policyHistory = policyLiftedAction.getLiftedProperties();
 					history = liftedAction.getLiftedProperties();
@@ -136,7 +140,7 @@ public class FiniteStatePolicyEvaluator {
 					LiftedEvidence liftedEvidence = null;
 					
 					if (UBT.liftedPbvi) {
-						liftedEvidence = new LiftedEvidence(nextObs, null, history);
+						liftedEvidence = new LiftedEvidence(nextObs, history);
 						policyEvidence = curPolicy.getMatchingEvidence(liftedEvidence, policyHistory, curState);
 					}
 					
@@ -146,11 +150,12 @@ public class FiniteStatePolicyEvaluator {
 					// Find a random applicable next policy.
 					if (nextPolicy == null && !curState.ended()) { 
 						//System.out.println("finding next policy since no match");
-						nextPolicy = curPolicy.getApplicableNextPolicy(new LiftedEvidence(nextObs, curState), curState);
+						nextPolicy = curPolicy.getApplicableNextPolicy(new LiftedEvidence(nextObs), curState);
 						if (nextPolicy != null) {
 							addMissingObs(nextObs);
 						} else {
-							//System.out.println("no next policy");
+							System.out.println("no next policy");
+							return -10000D;
 						}
 						//curPolicy.debug = true;
 						//LiftedEvidence x = curPolicy.getMatchingEvidence(liftedEvidence, policyHistory, curState);
@@ -159,8 +164,8 @@ public class FiniteStatePolicyEvaluator {
 					
 					// Update history and policyHistory.
 					if (UBT.liftedPbvi && nextPolicy != null && policyEvidence != null) {
-						history = liftedEvidence.getLiftedProperties();
-						LiftedEvidence policyLiftedEvidence = new LiftedEvidence(policyEvidence.getEvidence(curState.getTimestep()), null, policyHistory);
+						//history = liftedEvidence.getLiftedProperties();
+						LiftedEvidence policyLiftedEvidence = new LiftedEvidence(policyEvidence.getEvidence(curState.getTimestep()), policyHistory);
 						policyHistory = policyLiftedEvidence.getLiftedProperties();
 					}
 
@@ -175,7 +180,7 @@ public class FiniteStatePolicyEvaluator {
 			if (numPathsPrinted < numTrialsToPrint) {
 				System.out.println("Value: " + curValue + ", Path: " + curPath);
 				if (UBT.liftedPbvi)
-					System.out.println("history, policyHistory: " + history + ", " + policyHistory);
+					System.out.println("history, policyHistory: " + curState.getEvidenceHistory() + ", " + policyHistory);
 				numPathsPrinted++;
 			}
 			accumulatedValue += curValue;
