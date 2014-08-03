@@ -305,6 +305,9 @@ public class OUPBVI {
 		
 		debug(Timer.getElapsedStr() + "[EVAL]->pid" + p.getID() + " not found " + state);
 		
+		FiniteStatePolicyEvaluator evaluator = new FiniteStatePolicyEvaluator(this.pomdp);
+		return evaluator.eval(state, p, 100);
+		/*
 		v = 0D;
 		
 		int numTrials = 100;
@@ -349,6 +352,7 @@ public class OUPBVI {
 			v += curValue + nextValue;
 		}
 		return v/numTrials;
+		*/
 	}
 
 	private double worstValue() {
@@ -659,7 +663,7 @@ public class OUPBVI {
 	
 	private void evaluate(FiniteStatePolicy p) {
 		Timer.start("FINAL EVALUATION");
-		FiniteStatePolicyEvaluator evaluator = new FiniteStatePolicyEvaluator(this.getPOMDP(), pomdp.getGamma());
+		FiniteStatePolicyEvaluator evaluator = new FiniteStatePolicyEvaluator(this.getPOMDP());
 		Belief b;
 		if (UBT.liftedPbvi) {
 			ObservabilitySignature.obsSetID = 1;
@@ -679,7 +683,7 @@ public class OUPBVI {
 	private void evaluate(String string) {
 		DotToPolicy p = new DotToPolicy();
 		p.createPolicy(string);
-		FiniteStatePolicyEvaluator evaluator = new FiniteStatePolicyEvaluator(this.getPOMDP(), pomdp.getGamma());
+		FiniteStatePolicyEvaluator evaluator = new FiniteStatePolicyEvaluator(this.getPOMDP());
 		Belief b;
 
 		for (int i = 0; i < 10; i++) {

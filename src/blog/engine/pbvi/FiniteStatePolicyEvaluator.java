@@ -17,9 +17,9 @@ public class FiniteStatePolicyEvaluator {
 	private double gamma;
 	private Map<Evidence, Integer> numMissingObs;
 	
-	public FiniteStatePolicyEvaluator(OUPOMDPModel pbvi, double gamma) {
-		this.pomdp = pbvi;
-		this.gamma = gamma;
+	public FiniteStatePolicyEvaluator(OUPOMDPModel pomdp) {
+		this.pomdp = pomdp;
+		this.gamma = pomdp.getGamma();
 	}
 	
 	public Map<Evidence, Integer> getLastMissingObs() {
