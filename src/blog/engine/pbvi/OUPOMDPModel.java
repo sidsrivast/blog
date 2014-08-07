@@ -15,6 +15,7 @@ import blog.bn.BayesNetVar;
 import blog.common.Util;
 import blog.engine.onlinePF.PFEngine.PFEngineSampled;
 import blog.engine.onlinePF.evidenceGenerator.EvidenceQueryDecisionGeneratorOnline;
+import blog.engine.onlinePF.inverseBucket.UBT;
 import blog.model.ArgSpec;
 import blog.model.BuiltInTypes;
 import blog.model.DecisionEvidenceStatement;
@@ -23,6 +24,7 @@ import blog.model.Evidence;
 import blog.model.FuncAppTerm;
 import blog.model.Model;
 import blog.model.Query;
+import blog.model.SkolemConstant;
 import blog.model.Term;
 import blog.model.TrueFormula;
 import blog.model.Type;
@@ -116,7 +118,7 @@ public class OUPOMDPModel {
 				DecisionEvidenceStatement decisionStatement = new DecisionEvidenceStatement(left, TrueFormula.TRUE);
 				action.addDecisionEvidence(decisionStatement);
 				action.compile();
-				actions.add(new LiftedEvidence(action));
+				actions.add(new LiftedEvidence(action, b.getEvidenceHistory()));
 			}
 			
 		}
@@ -188,7 +190,13 @@ public class OUPOMDPModel {
 		PFEngineSampled initPF = new PFEngineSampled(this.getModel(), properties);
 		initPF.answer(getQueries(0));
 		initPF.afterAnsweringQueries2();
-		return new Belief(initPF, this);
+		LiftedProperties history = null;
+		if (UBT.liftedPbvi) {
+			history = new LiftedProperties();
+			for (SkolemConstant sk : ((AbstractPartialWorld) initPF.particles.get(0).curWorld).getSkolemConstants())
+				history.addObject(sk.rv().getCanonicalTerm());
+		}
+		return new Belief(initPF, this, history);
 	}
 	
 	public Belief generateInitialBelief(int numParticles) {
@@ -197,7 +205,13 @@ public class OUPOMDPModel {
 		PFEngineSampled initPF = new PFEngineSampled(this.getModel(), properties);
 		initPF.answer(getQueries(0));
 		initPF.afterAnsweringQueries2();
-		return new Belief(initPF, this);
+		LiftedProperties history = null;
+		if (UBT.liftedPbvi) {
+			history = new LiftedProperties();
+			for (SkolemConstant sk : ((AbstractPartialWorld) initPF.particles.get(0).curWorld).getSkolemConstants())
+				history.addObject(sk.rv().getCanonicalTerm());
+		}
+		return new Belief(initPF, this, history);
 	}
 	
 	

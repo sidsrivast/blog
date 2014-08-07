@@ -39,7 +39,7 @@ random Integer reward(Timestep t) {
       = 100
     else if (exists Timestep pastT pastT <= t & exists Suspect s true == apply_arrest(s, t) & Time_Suspect(s) == pastT & !isGuilty(s)) then
       = -1000 
-    else = -5
+    else = -10000
 };
 
 random Real value(Timestep t) {

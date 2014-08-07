@@ -6,11 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import blog.engine.onlinePF.inverseBucket.TimedParticle;
 import blog.engine.onlinePF.inverseBucket.UBT;
 import blog.model.Evidence;
-import blog.model.SkolemConstant;
-import blog.world.AbstractPartialWorld;
 
 public class FiniteStatePolicyEvaluator {
 	private OUPOMDPModel pomdp;
@@ -80,7 +77,6 @@ public class FiniteStatePolicyEvaluator {
 		int numPathsPrinted = 0;
 		Belief initState = Belief.getSingletonBelief(state, 1, pomdp);
 		double accumulatedValue = 0;
-		
 		for (int i = 0; i < numTrials; i++) {
 			Belief curState = initState;
 			FiniteStatePolicy curPolicy = p;
@@ -88,92 +84,55 @@ public class FiniteStatePolicyEvaluator {
 			double discount = 1;
 			List<Evidence> curPath = new ArrayList<Evidence>();
 			LiftedProperties policyHistory = new LiftedProperties();
-			//LiftedProperties history = new LiftedProperties();
 			
 			if (UBT.liftedPbvi) {
 				Set<Object> existing = curPolicy.getAction().getLiftedProperties().getObjects();
 				for (Object e : existing)
 					policyHistory.addObject(e);
-
-				//for (SkolemConstant sk : state.getWorld().getSkolemConstants())
-				//	history.addObject(sk.rv().getCanonicalTerm());
-
-				if (numPathsPrinted < numTrialsToPrint) {
-					System.out.println("policyHistory " + policyHistory);
-					System.out.println("history " + curState.getEvidenceHistory());
-				}
 			}
-			
-			/*if (!curPolicy.isApplicable(curState)) {
-				System.out.println("!!REQUIRED!!" + curPolicy.getRequiredTerms());
-			}*/
 				
 			
 			while (curPolicy != null) {
 				if (curState.ended()) break;
-				//policyHistory.debug = true;
 				LiftedEvidence nextAction = curPolicy.getAction();
-				Evidence timeGroundedAction = nextAction.getEvidence(curState);
-				Evidence groundedAction = timeGroundedAction;
-				
-				LiftedProperties history = curState.getEvidenceHistory();
-				if (UBT.liftedPbvi) {
-					Map<Object, Object> subst = policyHistory.findNgoSubstitution(history);
-					if (subst == null) return -10000D;
-					groundedAction = timeGroundedAction.replace(subst);
+				Evidence groundedAction = nextAction.getEvidence(curState);
+				if (groundedAction == null) {
+					curValue = -10000D;
+					break;
 				}
 				curPath.add(groundedAction);
-
-				if (UBT.liftedPbvi) {
-					LiftedEvidence policyLiftedAction = new LiftedEvidence(timeGroundedAction, policyHistory);
-					LiftedEvidence liftedAction = new LiftedEvidence(groundedAction, history);
-
-					policyHistory = policyLiftedAction.getLiftedProperties();
-					history = liftedAction.getLiftedProperties();
-				}
-				
 				curState = curState.sampleNextBelief(groundedAction);
 				Evidence nextObs = curState.getLatestEvidence();
 				if (!curPolicy.isLeafPolicy()) {
 					curPath.add(nextObs);
-					LiftedEvidence policyEvidence = new LiftedEvidence(nextObs, null);
-					LiftedEvidence liftedEvidence = null;
-					
-					if (UBT.liftedPbvi) {
-						liftedEvidence = new LiftedEvidence(nextObs, history);
-						policyEvidence = curPolicy.getMatchingEvidence(liftedEvidence, policyHistory, curState);
-					}
-					
-					FiniteStatePolicy nextPolicy = curPolicy.getNextPolicy(policyEvidence);
+					LiftedEvidence evidenceToMatch = new LiftedEvidence(nextObs, curState.getEvidenceHistory());
+					FiniteStatePolicy nextPolicy = curPolicy.getNextPolicy(evidenceToMatch);
 					
 					// There is no matching evidence in the policy.
 					// Find a random applicable next policy.
 					if (nextPolicy == null && !curState.ended()) { 
 						//System.out.println("finding next policy since no match");
-						nextPolicy = curPolicy.getApplicableNextPolicy(new LiftedEvidence(nextObs), curState);
+						nextPolicy = curPolicy.getApplicableNextPolicy(new LiftedEvidence(nextObs, policyHistory), curState);
 						if (nextPolicy != null) {
 							addMissingObs(nextObs);
 						} else {
-							System.out.println("no next policy");
-							return -10000D;
+							System.out.println("no next policy for evidence " + evidenceToMatch);
+							System.out.println("action just taken is " + nextAction);
+							System.out.println("policy successors are ");
+							for (LiftedEvidence e : curPolicy.getNextEvidences())
+								System.out.println(e);
+							curValue = -10000D;
+							break;
 						}
 						//curPolicy.debug = true;
 						//LiftedEvidence x = curPolicy.getMatchingEvidence(liftedEvidence, policyHistory, curState);
 						//System.out.println(x + " *** " + liftedEvidence);
 					} 
 					
-					// Update history and policyHistory.
-					if (UBT.liftedPbvi && nextPolicy != null && policyEvidence != null) {
-						//history = liftedEvidence.getLiftedProperties();
-						LiftedEvidence policyLiftedEvidence = new LiftedEvidence(policyEvidence.getEvidence(curState.getTimestep()), policyHistory);
-						policyHistory = policyLiftedEvidence.getLiftedProperties();
-					}
-
 					curPolicy = nextPolicy;
 				} else {
 					curPolicy = null;
 				}
-				
 				curValue += discount * curState.getLatestReward();
 				discount = discount * gamma;
 			}

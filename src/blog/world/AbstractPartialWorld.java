@@ -155,20 +155,6 @@ public abstract class AbstractPartialWorld implements PartialWorld {
 			/*added by cheng*/
 			changedVarToValue.put(var, value);
 			if (value instanceof NonGuaranteedObject && var instanceof RandFuncAppVar){
-				/*if (genObjToVar.containsKey(value)) {
-					System.err.println(genObjToVar);
-					System.err.println("Trying to add " + value + " " + var);
-					for (Object o : genObjToVar.keySet()) {
-						Function f = ((RandFuncAppVar) genObjToVar.get(o)).func();
-						SkolemConstant sk = (SkolemConstant) f;
-						System.err.println(genObjToVar.get(o) + " " + sk.clauseList);
-					}
-					Function f = ((RandFuncAppVar) var).func();
-					SkolemConstant sk = (SkolemConstant) f;
-					System.err.println(var + " " + sk.clauseList);
-					new Exception().printStackTrace();
-					System.exit(1);
-				}*/
 				genObjToVar.put(value, var);
 			}
 		}
@@ -1184,60 +1170,15 @@ public abstract class AbstractPartialWorld implements PartialWorld {
 	}
 	
 	private boolean compareNgos(AbstractPartialWorld otherWorld) {
-		/*Map<NonGuaranteedObject, Set<RandFuncAppVar>> otherNgoProperties = otherWorld.getNgoProperties();
-		Map<NonGuaranteedObject, Set<RandFuncAppVar>> myNgoProperties = getNgoProperties();
-		Set<RandFuncAppVar> allMyProperties = new HashSet<RandFuncAppVar>();
-		Set<RandFuncAppVar> allOtherProperties = new HashSet<RandFuncAppVar>();
-		for (NonGuaranteedObject ngo : myNgoProperties.keySet()) {
-			allMyProperties.addAll(myNgoProperties.get(ngo));
-		}
-		for (NonGuaranteedObject ngo : otherNgoProperties.keySet()) {
-			allOtherProperties.addAll(otherNgoProperties.get(ngo));
-		}*/
 		return null != getNgoProperties().findNgoSubstitution(otherWorld.getNgoProperties());
-		/*Set<NonGuaranteedObject> availableMatches = new HashSet(otherNgoProperties.keySet());
-		if (availableMatches.size() != myNgoProperties.size()) return false;
-		
-		for (NonGuaranteedObject myNgo : myNgoProperties.keySet()) {
-			NonGuaranteedObject match = null;
-			Set<RandFuncAppVar> myProperties = myNgoProperties.get(myNgo);
-			for (NonGuaranteedObject otherNgo : availableMatches) {
-				
-				Set<RandFuncAppVar> otherProperties = otherNgoProperties.get(otherNgo);
-				if (myProperties.size() != otherProperties.size()) {
-					continue;
-				}
-				boolean isMatch = true;
-				for (RandFuncAppVar v : myProperties) {
-					Object[] args = v.args().clone();
-					args[0] = otherNgo;
-					RandFuncAppVar otherVar = new RandFuncAppVar(v.func(), args);
-					if (!otherProperties.contains(otherVar)) {
-						isMatch = false;
-						break;
-					} else if (!otherVar.getValue(otherWorld).equals(v.getValue(this))) {
-						isMatch = false;
-						break;
-					}
-				}
-				if (isMatch) {
-					match = otherNgo;
-					break;
-				}
-			}
-			
-			if (match != null) {
-				availableMatches.remove(match);
-			} else
-				return false;
-		}
-		return true;*/
 	}
 	
 	/**
-	 * checks if two partial worlds are equal, minus decision function
+	 * Checks if two partial worlds are equal, minus decision function
 	 * and observation function values
+	 * Vars without children can be labeled as non_state as an optimization.
 	 * 
+	 * When updating this function, you should also consider updating innerStateHashcode
 	 * TODO maybe find a better place to put this; right now it is specific to comparing POMDP states
 	 */
 	public boolean innerStateEquals(AbstractPartialWorld otherWorld, int maxTimestep) {
@@ -1255,16 +1196,14 @@ public abstract class AbstractPartialWorld implements PartialWorld {
 
 				if (funcVar.func().getName().equals("value") || 
 						funcVar.func().getName().equals("reward") ||
-						funcVar.func().getName().contains("nonstate_")) { //for now, vars without children
+						funcVar.func().getName().contains("nonstate_")) { 
 					continue;
 				}
 				if ((funcVar.func()) instanceof ObservableRandomFunction){
 					Boolean myObs = (Boolean) getValue(v);
 					if (UBT.currentScheme==UBT.schemes.allVariables ||
 							(UBT.currentScheme==UBT.schemes.nonObservableVariables && myObs.booleanValue())) {
-						//System.out.print("can observe " + v);
 						v = (BasicVar) observableToReferenced.get(v);
-						//System.out.println(" referencing " + v);
 					} else
 						continue;
 				}
@@ -1280,76 +1219,43 @@ public abstract class AbstractPartialWorld implements PartialWorld {
 							break;
 						}
 					}
+					if (basicVarToValue.get(v) instanceof NonGuaranteedObject) {
+						containsNgo = true;
+					}
 					if (containsNgo) continue;
 				}
 			}
 			
-			//System.out.println("Compare? " + v);
 			int timestepIndex = DBLOGUtil.getTimestepIndex(v);
-			if (UBT.rememberHistory || timestepIndex == maxTimestep){
+			if (UBT.rememberHistory || timestepIndex == maxTimestep) {
 				boolean sameValue = otherWorld.basicVarToValue.containsKey(v) && otherWorld.basicVarToValue.get(v).equals(basicVarToValue.get(v));
-				//sameValue |= (otherWorld.basicVarToValue.containsKey(v) && otherWorld.basicVarToValue.get(v).equals(changedVarToValue.get(v)));
 				if (!sameValue)
 					return false;
 			}
-			/*
-			if (DBLOGUtil.getTimestepIndex(v) == maxTimestep){
-				rtn = rtn && (otherWorld.changedVarToValue.containsKey(v) && otherWorld.changedVarToValue.get(v).equals(changedVarToValue.get(v)));
-			}*/
 		}
 		if (UBT.liftedStateComparison && !compareNgos(otherWorld)) {
 			return false;
+		} 
+		if (!UBT.liftedStateComparison){
+			rtn = rtn && otherWorld.skolemConstants.equals(this.skolemConstants);
 		}
 		
-		//rtn = rtn && otherWorld.skolemConstants.equals(this.skolemConstants);
-		//for (SkolemConstant s : skolemConstants) {
-		//	
-		//}
-		
-		
-		
-		/*
-		if (UniversalBenchmarkTool.currentScheme==UniversalBenchmarkTool.schemes.allVariables || UniversalBenchmarkTool.currentScheme==UniversalBenchmarkTool.schemes.nonObservableVariables){
-			for (BayesNetVar v : this.observableToReferenced.keySet()){
-				Boolean myObs = (Boolean) getValue(v);
-				if (UniversalBenchmarkTool.currentScheme==UniversalBenchmarkTool.schemes.allVariables || !myObs.booleanValue()){
-					v = observableToReferenced.get(v);
-					if (UniversalBenchmarkTool.rememberHistory || DBLOGUtil.getTimestepIndex(v) == maxTimestep){
-						rtn = rtn && (otherWorld.changedVarToValue.containsKey(v) && otherWorld.changedVarToValue.get(v).equals(changedVarToValue.get(v)));
-					}
-				}
-			}
-		}
-		*/
 		UBT.specialTimingData += (timer.elapsedTime());
 		return rtn;
 	}
-
-	/**
-	 * only basic vars are considered
-	 */
+	
 	public int innerStatehashCode (int maxTimestep){
 		UBT.Stopwatch timer = new UBT.Stopwatch();
 		timer.startTimer();
 		int rtn = 0;
-		/*
-		int maxTimestep = -1;
-		if (!UniversalBenchmarkTool.rememberHistory){
-			for (Object o : changedVarToValue.keySet()){
-				BasicVar v = (BasicVar) o;
-				maxTimestep = Math.max(maxTimestep, DBLOGUtil.getTimestepIndex(v));
-			}
-		}
-		*/
 		for (Object o : basicVarToValue.keySet()){
 			BasicVar v = (BasicVar) o;
-			//System.out.println(v);
 			if (v.toString().contains("nonstate_")) continue;
 			if (v instanceof RandFuncAppVar){
 				RandFuncAppVar funcVar = (RandFuncAppVar) v;
 				if (funcVar.func().getName().equals("value") 
 						|| funcVar.func().getName().equals("reward")
-						|| funcVar.func().getName().contains("nonstate_")) { //for now, vars without children
+						|| funcVar.func().getName().contains("nonstate_")) {
 					continue;
 				}
 				if (funcVar.func().getObservableFun() != null)
@@ -1371,22 +1277,15 @@ public abstract class AbstractPartialWorld implements PartialWorld {
 							break;
 						}
 					}
+					if (basicVarToValue.get(v) instanceof NonGuaranteedObject) {
+						containsNgo = true;
+					}
 					if (containsNgo) continue;
 				}
 			}
 			
-			//System.out.println(v);
-			/*if (DBLOGUtil.getTimestepIndex(v) == maxTimestep) {
-				int a = v.hashCode();
-				rtn = rtn ^ v.hashCode();
-				Object b = changedVarToValue.get(v);
-				int c = b.hashCode();
-				rtn = rtn ^ changedVarToValue.get(v).hashCode();
-			}*/
 			int timestepIndex = DBLOGUtil.getTimestepIndex(v);
 			if (UBT.rememberHistory || timestepIndex == maxTimestep){
-				//if (DBLOGUtil.getTimestepIndex(v) == -1) continue;
-				//System.out.println("hash " + v + " value: " + changedVarToValue.get(v));
 				int a = v.hashCode();
 				rtn = rtn ^ v.hashCode();
 				Object b = basicVarToValue.get(v);
@@ -1394,24 +1293,6 @@ public abstract class AbstractPartialWorld implements PartialWorld {
 				rtn = rtn ^ basicVarToValue.get(v).hashCode();
 			}
 		}
-		//rtn = rtn ^ this.skolemConstants.hashCode();
-		/*
-		if (UniversalBenchmarkTool.currentScheme==UniversalBenchmarkTool.schemes.allVariables || UniversalBenchmarkTool.currentScheme==UniversalBenchmarkTool.schemes.nonObservableVariables){
-			for (BayesNetVar v : this.observableToReferenced.keySet()){
-				Boolean myObs = (Boolean) getValue(v);
-				if (UniversalBenchmarkTool.currentScheme==UniversalBenchmarkTool.schemes.allVariables || !myObs.booleanValue()){
-					v = observableToReferenced.get(v);
-					if (UniversalBenchmarkTool.rememberHistory || DBLOGUtil.getTimestepIndex(v) == maxTimestep){
-						int a = v.hashCode();
-						rtn = rtn ^ v.hashCode();
-						Object b = changedVarToValue.get(v);
-						int c = b.hashCode();
-						rtn = rtn ^ changedVarToValue.get(v).hashCode();
-					}
-				}
-			}
-		}
-		*/
 		UBT.specialTimingData2 += (timer.elapsedTime());
 		return rtn;
 	}

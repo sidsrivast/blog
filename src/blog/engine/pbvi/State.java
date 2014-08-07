@@ -9,6 +9,7 @@ import blog.DBLOGUtil;
 import blog.bn.BasicVar;
 import blog.bn.NumberVar;
 import blog.bn.RandFuncAppVar;
+import blog.engine.onlinePF.inverseBucket.UBT;
 import blog.model.BuiltInTypes;
 import blog.model.POP;
 import blog.model.RandomFunction;
@@ -18,6 +19,7 @@ import blog.world.DefaultPartialWorld;
 
 public class State {
 	private AbstractPartialWorld world;
+	private LiftedProperties liftedProperties;
 	private int timestep;
 
 	public State(AbstractPartialWorld w, int t) {
@@ -80,6 +82,9 @@ public class State {
 		return newArgs;
 	}
 
+	public void initLiftedProperties(LiftedProperties properties) {
+		this.liftedProperties = properties;
+	}
 
 	private AbstractPartialWorld zeroWorld;
 	
@@ -97,7 +102,7 @@ public class State {
 	public int hashCode() {
 		return this.getZeroWorld().innerStatehashCode(0);
 	}
-
+	
 	@Override
 	public boolean equals(Object o) {
 		if (!(o instanceof State))
@@ -105,6 +110,21 @@ public class State {
 		State s = (State) o;
 		boolean equality = false;
 		Timer.start("STATE_COMPARISON");
+		
+		if (s.liftedProperties != null && liftedProperties != null) {
+			if (!s.liftedProperties.equals(liftedProperties))
+				return false;
+		} else if (s.liftedProperties == null && liftedProperties == null) {
+			
+		} else {
+			Exception e = new Exception();
+			e.printStackTrace();
+			System.err.println("Should not be comparing a state with lifted properties " +
+					"with another with none");
+			System.err.println("s.liftedProperties" + s.liftedProperties);
+			System.err.println("liftedProperties" + liftedProperties);
+			System.exit(1);
+		}
 		
 		AbstractPartialWorld thisWorld = world;
 		AbstractPartialWorld toCompareWorld = s.world;
@@ -121,6 +141,13 @@ public class State {
 	
 	@Override
 	public String toString() {
+		if (UBT.liftedPbvi) {
+			return "State: " + world.toString() + ", Lifted Properties: " + liftedProperties;
+		}
 		return "State: " + world.toString();
+	}
+
+	public LiftedProperties getLiftedProperties() {
+		return liftedProperties;
 	}
 }

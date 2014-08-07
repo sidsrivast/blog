@@ -18,6 +18,8 @@ public class ActionPropagated {
 	
 	private double reward;
 	private PFEngineSampled actionPropagatedPF;
+
+	private LiftedProperties evidenceHistory;
 	
 	public ActionPropagated(Belief belief) {
 		this.belief = belief;
@@ -64,7 +66,11 @@ public class ActionPropagated {
 			//ObservabilitySignature.dropHistory(((TimedParticle)Util.getFirst(nextPF.particles)).getTimestep());
 		}
 		nextPF.resample();
-		Belief nextBelief = new Belief(nextPF, pomdp);
+		
+		LiftedEvidence liftedObs = new LiftedEvidence(o, evidenceHistory);
+		LiftedProperties newEvidenceHistory = liftedObs.getLiftedProperties();
+		
+		Belief nextBelief = new Belief(nextPF, pomdp, newEvidenceHistory);
 		Timer.record("BELIEF_PROP");
 		Belief.updateResampleStateCountStats(nextBelief);
 		return nextBelief;
@@ -80,5 +86,9 @@ public class ActionPropagated {
 	
 	public void setReward(double r) { reward = r; }
 	public double getReward() { return reward; }
+
+	public void setEvidenceHistory(LiftedProperties evidenceHistory) {
+		this.evidenceHistory = evidenceHistory;
+	}
 
 }

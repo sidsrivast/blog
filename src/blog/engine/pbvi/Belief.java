@@ -16,7 +16,6 @@ import blog.engine.onlinePF.inverseBucket.UBT;
 import blog.model.BuiltInTypes;
 import blog.model.Evidence;
 import blog.model.Function;
-import blog.model.SkolemConstant;
 import blog.model.Term;
 import blog.model.Type;
 import blog.world.AbstractPartialWorld;
@@ -33,26 +32,29 @@ public class Belief {
 	 * This set should be the same across all worlds.
 	 * In addition, all worlds should have the same values for the observed vars.
 	 */
-	private LiftedProperties evidenceHistory;
+	private LiftedProperties liftedProperties;
 	
-	public Belief(PFEngineSampled pf, OUPOMDPModel pomdp) {
+	/*public Belief(PFEngineSampled pf, OUPOMDPModel pomdp) {
 		this(pf, pomdp, null);
-	}
+	}*/
 	
-	public Belief(PFEngineSampled pf, OUPOMDPModel pomdp, LiftedProperties evidenceHistory) {
+	public Belief(PFEngineSampled pf, OUPOMDPModel pomdp, LiftedProperties liftedProperties) {
 		this.pf = pf;
 		this.pomdp = pomdp;
-		this.evidenceHistory = evidenceHistory;
+		this.liftedProperties = liftedProperties;
 		
 		stateCounts = new HashMap<State, Integer>();
 		for (TimedParticle tp : pf.particles) {
 			State s = new State((AbstractPartialWorld) tp.curWorld, tp.getTimestep());
 			addState(s);
 		}
+		if (UBT.liftedPbvi) {
+			this.updateStatesLiftedProperties();
+		}
 	}
 	
 	public LiftedProperties getEvidenceHistory() {
-		return evidenceHistory;
+		return liftedProperties;
 	}
 	
 	public int getTimestep() {
@@ -92,6 +94,11 @@ public class Belief {
 		Timer.record("takeAction");
 		
 		double reward = getAvgReward(nextPF);
+		if (reward == -10000D) {
+			System.out.println("noop action");
+			System.out.println(action);
+			System.out.println(this);
+		}
 		
 		for (TimedParticle p : nextPF.particles)
 			p.advanceTimestep();
@@ -126,8 +133,8 @@ public class Belief {
 		}
 		
 		LiftedProperties nextEvidenceHistory = null;
-		if (this.evidenceHistory != null) {
-			LiftedEvidence liftedAction = new LiftedEvidence(action, this.evidenceHistory);
+		if (this.liftedProperties != null) {
+			LiftedEvidence liftedAction = new LiftedEvidence(action, this.liftedProperties);
 			LiftedEvidence liftedObservation = new LiftedEvidence(o, liftedAction.getLiftedProperties());
 			nextEvidenceHistory = liftedObservation.getLiftedProperties();
 		}
@@ -192,6 +199,13 @@ public class Belief {
 		for (TimedParticle p : apPF.particles)
 			p.advanceTimestep();
 		apPF.updateOSforAllParticles();
+		
+		if (this.liftedProperties != null) {
+			Evidence groundAction = action.getEvidence(this);
+			LiftedEvidence liftedAction = new LiftedEvidence(groundAction, this.liftedProperties);
+			LiftedProperties nextEvidenceHistory = liftedAction.getLiftedProperties();
+			ap.setEvidenceHistory(nextEvidenceHistory);
+		}
 		
 		Map<Integer, Double> osWeights = new HashMap<Integer, Double>();
 		for (TimedParticle p : apPF.particles) {
@@ -278,6 +292,7 @@ public class Belief {
 		for (State s : states) {
 			result += getCount(s) + " " + s.getWorld() + "\n";
 		}
+		result += "Lifted Properties: " + this.liftedProperties + "\n";
 		return result;
 	}
 
@@ -336,6 +351,13 @@ public class Belief {
 		return latestReward;
 	}
 	
+	public void updateStatesLiftedProperties() {
+		Set<State> states = getStates();
+		for (State state : states)
+			state.initLiftedProperties(this.liftedProperties);
+	}
+	
+	
 	public static void printTimingStats() {
 		System.out.println("Belief.resampleTime " + Timer.niceTimeString(Timer.getAggregate("resample")));
 		System.out.println("Belief.copyTime " + Timer.niceTimeString(Timer.getAggregate("copy")));
@@ -361,20 +383,18 @@ public class Belief {
 		}
 		stateCountStats.put(numStates, stateCountStats.get(numStates) + 1);
 	}
-	
 
 	public static Belief getSingletonBelief(State state, int numParticles, OUPOMDPModel pomdp) {
 		Properties properties = (Properties) pomdp.getProperties().clone();
 		properties.setProperty("numParticles", "" + numParticles);
 		PFEngineSampled pf = new PFEngineSampled(pomdp.getModel(), properties, state.getWorld(), state.getTimestep());
-		LiftedProperties history = null;
-		if (UBT.liftedPbvi) {
-			history = new LiftedProperties();
-			for (SkolemConstant sk : state.getWorld().getSkolemConstants())
-				history.addObject(sk.rv().getCanonicalTerm());
+		if (UBT.liftedPbvi && state.getLiftedProperties() == null) {
+			System.out.println("Lifted properties cannot be none if running lifted pbvi.");
+			Exception e = new Exception();
+			e.printStackTrace();
+			System.exit(1);
 		}
-
-		Belief b = new Belief(pf, pomdp, history);
+		Belief b = new Belief(pf, pomdp, state.getLiftedProperties());
 		return b;
 	}
 }

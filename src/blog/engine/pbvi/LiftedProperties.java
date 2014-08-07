@@ -56,6 +56,11 @@ public class LiftedProperties {
 		Map<RandFuncAppVar, Object> result = new HashMap<RandFuncAppVar, Object>();
 		for (Object ngo : ngos) {
 			Set<RandFuncAppVar> leftSideProperties = objToProperties.get(ngo);
+			if (leftSideProperties == null) {
+				//System.out.println(ngos);
+				//System.out.println(this);
+				continue;
+			}
 			for (RandFuncAppVar var : leftSideProperties) {
 				result.put(var, properties.get(var));
 			}
@@ -82,7 +87,7 @@ public class LiftedProperties {
 		if (debug) {
 			System.out.println("findNgoSubstition" + myNgos + otherNgos + myProperties + otherProperties + partialSolution);
 		}
-		if (myNgos.size() != otherNgos.size()) return null;	
+		if (myNgos.size() > otherNgos.size()) return null;	
 		if (myNgos.isEmpty()) return partialSolution;
 		Object ngo = (Object) Util.getFirst(myNgos);
 		

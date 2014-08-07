@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import blog.DBLOGUtil;
@@ -31,24 +32,29 @@ import blog.model.ValueEvidenceStatement;
  * For now, it'll just be time independent.
  */
 public class LiftedEvidence {
+	private boolean debug = false;
 	private static Term emptyTimestep;
 	
 	static {
 		emptyTimestep = BuiltInTypes.REAL.getCanonicalTerm(Float.NaN);
 	}
 	
-	private Evidence evidence;
-	private LiftedProperties prevLiftedProperties;
-	private LiftedProperties liftedProperties;
+	// The original ground evidence and terms that can be replaced via lifting
+	private Evidence originalGroundEvidence;
+	private Set<Object> originalTerms;
+	private Term originalTimestep;
+	
+	private Evidence evidence; // The part of the evidence without any non guaranteed objects
+	private LiftedProperties prevLiftedProperties; // This is the history of lifted properties before this evidence.
+	private LiftedProperties liftedProperties; // This includes the current and historical lifted properties.
 
 	public LiftedEvidence(Evidence evidence) {
 		this(evidence, null);
 	}
 	
 	/**
-	 * If there's no lifted history given, 
-	 * this evidence will have its timestep replaced by 0 
-	 * (representing any t so that its time agnostic).
+	 * If there's no lifted history given, this evidence will have its timestep replaced by 0 
+	 * (representing any t so that it's time agnostic).
 	 * 
 	 * Otherwise, if lifted history is given, 
 	 * evidence containing ground objects are replaced by LiftedProperties
@@ -57,6 +63,7 @@ public class LiftedEvidence {
 	 */
 	public LiftedEvidence(Evidence evidence, LiftedProperties liftedHistory) {
 		liftedProperties = new LiftedProperties();
+		originalGroundEvidence = evidence;
 
 		int timestep = 0;
 		Set<? extends BayesNetVar> evidenceVars = evidence.getEvidenceVars();
@@ -74,6 +81,7 @@ public class LiftedEvidence {
 			}
 		}
 		Term toReplace = BuiltInTypes.TIMESTEP.getCanonicalTerm(BuiltInTypes.TIMESTEP.getGuaranteedObject(timestep));	
+		originalTimestep = toReplace;
 		if (liftedHistory == null)
 			evidence = evidence.replace(toReplace, emptyTimestep);
 		
@@ -84,7 +92,6 @@ public class LiftedEvidence {
 		
 		Set<DerivedVar> liftedVars = new HashSet<DerivedVar>();
 		
-		boolean hasLifted = false;
 		if (UBT.liftedPbvi) {
 			for (Object stmt : statements) {
 				BayesNetVar var = null; 
@@ -120,12 +127,9 @@ public class LiftedEvidence {
 					else if (term.getFunction() instanceof blog.model.DecisionFunction) {
 						DecisionFunction f = (DecisionFunction) term.getFunction();
 						function = new RandomFunction(f.getName(), Arrays.asList(f.getArgTypes()), f.getRetType(), null);
-						//System.out.println("Decision " + function);
 					} else
 						continue;
-					// if an observable_ function, skip
-					//if (function.getObservableFun() == null) continue;
-
+					
 					// Search for non-guaranteed symbols
 					ArgSpec[] args = term.getArgs();
 					if (args.length == 0) {
@@ -135,14 +139,12 @@ public class LiftedEvidence {
 					List<Object> newArgs = new ArrayList<Object>();
 					boolean hasNgo = false;
 					for (ArgSpec arg : args) {
-						newArgs.add(arg); //using symbol object instead
+						newArgs.add(arg);
 						if (!(arg instanceof FuncAppTerm)) continue;
 						FuncAppTerm fat = (FuncAppTerm) arg;
 						if (!(fat.getFunction() instanceof SkolemConstant)) continue;
 						hasNgo = true;
-						liftedProperties.addObject(fat); //using symbol object instead
-						//liftedProperties.addObject(newArg);
-						//}
+						liftedProperties.addObject(fat);
 					}
 					if (hasNgo) {
 						// NOTE: the following RandFuncAppVar is not "valid" in the sense that
@@ -151,15 +153,11 @@ public class LiftedEvidence {
 						RandFuncAppVar newVar = new RandFuncAppVar(function, newArgs);
 
 						liftedProperties.addProperty(newVar, value);
-						hasLifted = true;
 						liftedVars.add((DerivedVar) var);
 					}
 				}
 			}
 		}
-		//if (hasLifted)
-			//System.out.println("Lifted" + liftedProperties);
-		
 
 		for (ValueEvidenceStatement stmt : ves) {
 			if (liftedHistory != null && liftedVars.contains(stmt.getObservedVar())) continue;
@@ -175,8 +173,11 @@ public class LiftedEvidence {
 			newEvidence.addSymbolEvidence(stmt);
 		}
 		
-		if (liftedHistory != null)
+		if (UBT.liftedPbvi) {
+			prevLiftedProperties = liftedHistory;
+			originalTerms = new HashSet<Object>(liftedProperties.getObjects());
 			liftedProperties.add(liftedHistory);
+		}
 
 		newEvidence.compile();
 		this.evidence = newEvidence;
@@ -185,15 +186,30 @@ public class LiftedEvidence {
 	/**
 	 * Returns the grounded version of the evidence.
 	 * The belief should contain enough information to ground the evidence.
+	 * 
+	 * If we are not using lifted pbvi, just return the evidence with the time corrected.
 	 * @param b
 	 * @return
 	 */
 	public Evidence getEvidence(Belief b) {
 		int timestep = b.getTimestep();
 		Term replace = BuiltInTypes.TIMESTEP.getCanonicalTerm(BuiltInTypes.TIMESTEP.getGuaranteedObject(timestep));
-		Evidence grounded = evidence.replace(emptyTimestep, replace);
-		//liftedProperties.replace(emptyTimestep, replace);
-		return grounded;
+		Evidence grounded = originalGroundEvidence.replace(originalTimestep, replace);
+		if (!UBT.liftedPbvi) {
+			return grounded;
+		}
+		Map<Object, Object> subst = prevLiftedProperties.findNgoSubstitution(originalTerms, b.getEvidenceHistory());
+		
+		if (subst == null) {
+			if (debug) {
+				System.out.println("LiftedEvidence.getEvidence(b)" + b.getEvidenceHistory());
+				System.out.println("LiftedEvidence.getEvidence(b)" + prevLiftedProperties);
+				System.out.println("LiftedEvidence.getEvidence(b)" + originalTerms);
+			}
+			return null;
+		}
+		
+		return grounded.replace(subst);
 	}
 	
 	public Evidence getEvidence(int timestep) {
@@ -223,7 +239,7 @@ public class LiftedEvidence {
 	}
 
 	public Evidence getStoredEvidence() {
-		return evidence;
+		return originalGroundEvidence;
 	}
 
 	public LiftedProperties getLiftedProperties() {

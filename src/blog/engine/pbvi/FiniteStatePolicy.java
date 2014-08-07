@@ -1,6 +1,5 @@
 package blog.engine.pbvi;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -14,15 +13,13 @@ import blog.bn.DerivedVar;
 import blog.engine.onlinePF.absyn.PolicyModel;
 import blog.model.ArgSpec;
 import blog.model.DecisionEvidenceStatement;
-import blog.model.Evidence;
 import blog.model.FuncAppTerm;
 import blog.model.SkolemConstant;
 import blog.model.Term;
 import blog.world.AbstractPartialWorld;
-import blog.world.PartialWorld;
 
 public class FiniteStatePolicy extends PolicyModel {
-	public boolean debug = false;
+	private boolean debug = false;
 	private AlphaVector alpha;
 	private LiftedEvidence action;
 	private Map<LiftedEvidence, FiniteStatePolicy> successors;
@@ -223,10 +220,6 @@ public class FiniteStatePolicy extends PolicyModel {
 	public FiniteStatePolicy getNextPolicy(LiftedEvidence o) {
 		return successors.get(o);
 	}
-/*
-	public void addObsNote(LiftedEvidence obs, String note) {
-		notes.put(new LiftedEvidence(obs), note);
-	}*/
 	
 	public void addObsNote(LiftedEvidence obs, String note) {
 		notes.put(obs, note);
@@ -264,6 +257,10 @@ public class FiniteStatePolicy extends PolicyModel {
 
 	public Set<ArgSpec> getRequiredTerms() {
 		return new HashSet<ArgSpec>(requiredTerms);
+	}
+
+	public Set<LiftedEvidence> getNextEvidences() {
+		return this.successors.keySet();
 	}
 	
 }

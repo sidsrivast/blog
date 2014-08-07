@@ -46,6 +46,8 @@ public class OUPBVI {
 	private Map<Belief, Integer> beliefIDs = new HashMap<Belief, Integer>();
 	private int beliefID = 0;
 	
+	private FiniteStatePolicyEvaluator evaluator;
+	
 	public OUPBVI(OUPOMDPModel model, Properties properties, int horizon, int numBeliefs) {
 		this.pomdp = model;
 		this.horizon = horizon;
@@ -55,6 +57,8 @@ public class OUPBVI {
 		numParticles = Integer.parseInt((String) properties.get("numParticles"));
 		this.maxNumAlphaKeys = numParticles * numBeliefs;
 		alphaKeys = new HashMap<State, State>();
+		
+		evaluator = new FiniteStatePolicyEvaluator(this.pomdp);
 	}
 	
 	private void debug(String s) {
@@ -126,11 +130,6 @@ public class OUPBVI {
 				setAlphaVectors(newPolicies, policies, t);
 				policies = newPolicies;
 
-				int i = 0;
-				/*for (FiniteStatePolicy p : policies) {
-					System.out.println(p.toDotString("p" + "_t" + t + "_i" + i));
-					i++;
-				}*/
 				System.out.println("Number of OS: " + ObservabilitySignature.OStoIndex.size());
 				
 				//TODO: can move some of this into backup?
@@ -245,7 +244,6 @@ public class OUPBVI {
 			newBeliefs.add(bestBelief);
 			beliefIDs.put(bestBelief, beliefID);
 			beliefID++;
-			//addToSampledPOMDP(bestBelief, pomdp);
 			System.out.println("max diff: " + maxDiff);
 		}
 		System.out.println(Timer.getElapsedStr() + "[EXPAND_DONE]");
@@ -277,17 +275,16 @@ public class OUPBVI {
 		return val;
 	}
 	
-	Map<Integer, Long> evalPolicyTimes = new HashMap<Integer, Long>();
-	Map<Integer, Integer> evalPolicyCounts= new HashMap<Integer, Integer>();
 	private double evalPolicyDFS(Belief b, FiniteStatePolicy p) {
 		State state = null;
 		if (b.getStates().size() > 1) {
-			System.out.println("Why is it not a singleton belief in DFS?");
+			System.out.println("Why is it not a singleton belief in DFS?" + b);
+			System.exit(1);
 		}
 		
 		for (State s : b.getStates()) {
 			if (b.getCount(s) > 1) {
-				System.out.println("Why is it not a single count belief in DFS?");
+				System.out.println("Why is it not a single count belief in DFS?" + b);
 			}
 			state = s;
 		}
@@ -305,54 +302,7 @@ public class OUPBVI {
 		
 		debug(Timer.getElapsedStr() + "[EVAL]->pid" + p.getID() + " not found " + state);
 		
-		FiniteStatePolicyEvaluator evaluator = new FiniteStatePolicyEvaluator(this.pomdp);
 		return evaluator.eval(state, p, 100);
-		/*
-		v = 0D;
-		
-		int numTrials = 100;
-		for (int i = 0; i < numTrials; i++) {
-			Belief curBelief = b;
-			FiniteStatePolicy curPolicy = p;
-			boolean alphaFound = false;
-			double nextValue = 0; //set to nonzero if alpha vector can calc value of belief
-			double curValue = 0D;
-			double discount = 1;
-			while (curPolicy != null) {//curBelief.getTimestep() < horizon) {
-				if (!usePerseus && curBelief.ended()) break;
-				Double alphaValue = curPolicy.getAlphaVector().getValue(curBelief);
-				if (alphaValue != null) {
-					nextValue = discount * alphaValue;
-					alphaFound = true;
-					break;
-				}
-				LiftedEvidence nextAction = curPolicy.getAction();
-				curBelief = curBelief.sampleNextBelief(nextAction);		
-				LiftedEvidence nextObs = new LiftedEvidence(curBelief.getLatestEvidence());
-				FiniteStatePolicy nextPolicy = curPolicy.getNextPolicy(nextObs);
-				if (nextPolicy == null && !curBelief.ended() && !curPolicy.isLeafPolicy()) { 
-					nextPolicy = curPolicy.getApplicableNextPolicy(nextObs, curBelief);
-					if (nextPolicy != null) {
-						curPolicy.setNextPolicy(nextObs, nextPolicy);
-						curPolicy.addObsNote(nextObs, "random applicable");
-					} else {
-						System.out.println("No applicable next policy for " + curBelief);
-						System.exit(0);
-					}
-				}
-				curPolicy = nextPolicy;
-				
-				curValue += discount * curBelief.getLatestReward();
-				discount = discount * pomdp.getGamma();
-			}
-			
-			if (usePerseus && !alphaFound) {
-				nextValue = worstValue() * discount;
-			}
-			v += curValue + nextValue;
-		}
-		return v/numTrials;
-		*/
 	}
 
 	private double worstValue() {
@@ -502,7 +452,7 @@ public class OUPBVI {
 		
 		Map<LiftedEvidence, FiniteStatePolicy> bestLiftedPolicyMap = new HashMap<LiftedEvidence, FiniteStatePolicy>();
 		for (Evidence e : bestPolicyMap.keySet()) {
-			bestLiftedPolicyMap.put(new LiftedEvidence(e), bestPolicyMap.get(e));
+			bestLiftedPolicyMap.put(new LiftedEvidence(e, bestAction.getLiftedProperties()), bestPolicyMap.get(e));
 		}
 		FiniteStatePolicy newPolicy = new FiniteStatePolicy(bestAction, bestLiftedPolicyMap);
 		System.out.println("singlebackupforbelief.newPolicy.id " + newPolicy.getID());
@@ -673,6 +623,13 @@ public class OUPBVI {
 			System.out.println(b);
 			System.out.println("Iter: " + i);
 			Double predictedValue = p.getAlphaVector().getValue(b);
+			if (predictedValue == null) {
+				for (State s : b.getStates()) {
+					if (null == p.getAlphaVector().getValue(s)) {
+						System.out.println("No alpha value for " + s);
+					}
+				}
+			}
 			System.out.println("Predicted: " + predictedValue);
 			System.out.println("Evaluated: " + evaluator.eval(b, p, 100, 1));
 			System.out.println("Unhandled obs: " + evaluator.getMissingObs());
