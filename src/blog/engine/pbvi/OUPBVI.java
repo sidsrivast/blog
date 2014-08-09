@@ -302,7 +302,7 @@ public class OUPBVI {
 		
 		debug(Timer.getElapsedStr() + "[EVAL]->pid" + p.getID() + " not found " + state);
 		
-		return evaluator.eval(state, p, 100);
+		return evaluator.eval(state, p, 100, 0, true);
 	}
 
 	private double worstValue() {

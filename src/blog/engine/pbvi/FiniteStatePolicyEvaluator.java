@@ -73,6 +73,11 @@ public class FiniteStatePolicyEvaluator {
 	}
 	
 	public Double eval(State state, FiniteStatePolicy p, int numTrials, int numTrialsToPrint) {
+		return eval(state, p, numTrials, numTrialsToPrint, false);
+	}
+	
+	public Double eval(State state, FiniteStatePolicy p, int numTrials, int numTrialsToPrint,
+			boolean stopAtKnownAlphaValue) {
 		numMissingObs = new HashMap<Evidence, Integer>();
 		int numPathsPrinted = 0;
 		Belief initState = Belief.getSingletonBelief(state, 1, pomdp);
@@ -103,6 +108,13 @@ public class FiniteStatePolicyEvaluator {
 				curPath.add(groundedAction);
 				curState = curState.sampleNextBelief(groundedAction);
 				Evidence nextObs = curState.getLatestEvidence();
+				
+				if (stopAtKnownAlphaValue) {
+					Double alphaValue = curPolicy.getAlphaVector().getValue(curState);
+					if (alphaValue != null)
+						return alphaValue;
+				}
+				
 				if (!curPolicy.isLeafPolicy()) {
 					curPath.add(nextObs);
 					LiftedEvidence evidenceToMatch = new LiftedEvidence(nextObs, curState.getEvidenceHistory());
