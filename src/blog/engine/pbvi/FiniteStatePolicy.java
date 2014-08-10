@@ -11,6 +11,7 @@ import blog.bn.BasicVar;
 import blog.bn.BayesNetVar;
 import blog.bn.DerivedVar;
 import blog.engine.onlinePF.absyn.PolicyModel;
+import blog.engine.onlinePF.inverseBucket.UBT;
 import blog.model.ArgSpec;
 import blog.model.DecisionEvidenceStatement;
 import blog.model.FuncAppTerm;
@@ -218,6 +219,14 @@ public class FiniteStatePolicy extends PolicyModel {
 	}
 	
 	public FiniteStatePolicy getNextPolicy(LiftedEvidence o) {
+		if (UBT.liftedPbvi) {
+			for (LiftedEvidence policyObservation : successors.keySet()) {
+				if (o.equals(policyObservation)) {
+					return successors.get(policyObservation);
+				}
+			}
+			return null;
+		}
 		return successors.get(o);
 	}
 	
@@ -238,22 +247,6 @@ public class FiniteStatePolicy extends PolicyModel {
 	}
 	
 	private static int count = 0;
-
-	public LiftedEvidence getMatchingEvidence(LiftedEvidence liftedEvidence,
-			LiftedProperties policyHistory, Belief b) {
-		for (LiftedEvidence e : successors.keySet()) {
-			LiftedEvidence liftedEvidenceWithHistory = new LiftedEvidence(e.getEvidence(b.getTimestep()), policyHistory);
-			if (liftedEvidenceWithHistory.equals(liftedEvidence))
-				return e;
-			else if (debug) {
-				liftedEvidenceWithHistory.getLiftedProperties().debug = true;
-				liftedEvidenceWithHistory.equals(liftedEvidence);
-				System.out.println(liftedEvidenceWithHistory);
-				System.out.println(liftedEvidence);
-			}
-		}
-		return null;
-	}
 
 	public Set<ArgSpec> getRequiredTerms() {
 		return new HashSet<ArgSpec>(requiredTerms);

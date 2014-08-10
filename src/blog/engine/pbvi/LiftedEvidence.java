@@ -187,6 +187,9 @@ public class LiftedEvidence {
 	 * Returns the grounded version of the evidence.
 	 * The belief should contain enough information to ground the evidence.
 	 * 
+	 * For instance, if this evidence says take(x), this function will find a ground
+	 * term in the belief to substitute in for x.
+	 * 
 	 * If we are not using lifted pbvi, just return the evidence with the time corrected.
 	 * @param b
 	 * @return
@@ -198,7 +201,7 @@ public class LiftedEvidence {
 		if (!UBT.liftedPbvi) {
 			return grounded;
 		}
-		Map<Object, Object> subst = prevLiftedProperties.findNgoSubstitution(originalTerms, b.getEvidenceHistory());
+		Map<Object, Object> subst = getSubstitution(b.getEvidenceHistory(), true);
 		
 		if (subst == null) {
 			if (debug) {
@@ -212,6 +215,28 @@ public class LiftedEvidence {
 		return grounded.replace(subst);
 	}
 	
+	/**
+	 * Find a mapping from all terms in the original terms of this evidence to
+	 * terms used in otherProperties so that substituting all terms in (prev)LiftedProperties
+	 * with the terms in otherProperties would generate the same properties in
+	 * otherProperties.
+	 * 
+	 * excludeThisEvidence is a flag that controls whether to include this evidence as
+	 * properties to compare or only compare the related historical properties.
+	 * 
+	 * @param otherProperties
+	 * @return
+	 */
+	public Map<Object, Object> getSubstitution(LiftedProperties otherProperties, boolean excludeThisEvidence) {
+		LiftedProperties toCompare = null;
+		if (excludeThisEvidence)
+			toCompare = prevLiftedProperties;
+		else
+			toCompare = liftedProperties;
+		return toCompare.findNgoSubstitution(originalTerms, otherProperties);
+	}
+	
+	@Deprecated
 	public Evidence getEvidence(int timestep) {
 		Term replace = BuiltInTypes.TIMESTEP.getCanonicalTerm(BuiltInTypes.TIMESTEP.getGuaranteedObject(timestep));
 		Evidence grounded = evidence.replace(emptyTimestep, replace);
@@ -225,7 +250,8 @@ public class LiftedEvidence {
 		if (!(other instanceof LiftedEvidence))
 			return false;
 		LiftedEvidence otherEvidence = (LiftedEvidence) other;
-		return this.evidence.equals(otherEvidence.evidence) && this.liftedProperties.equals(otherEvidence.liftedProperties);
+		return this.evidence.equals(otherEvidence.evidence) &&
+				this.getSubstitution(otherEvidence.getLiftedProperties(), false) != null;
 	}
 	
 	@Override

@@ -615,8 +615,12 @@ public class OUPBVI {
 		Timer.start("FINAL EVALUATION");
 		FiniteStatePolicyEvaluator evaluator = new FiniteStatePolicyEvaluator(this.getPOMDP());
 		Belief b;
+		
 		if (UBT.liftedPbvi) {
-			ObservabilitySignature.obsSetID = 1;
+			// This is a hack to ensure that generated symbols are different
+			// from the ones used in PBVI. This is so that we can verify the 
+			// lifting is working properly.
+			ObservabilitySignature.obsSetID = 0;
 		}
 		for (int i = 0; i < 10; i++) {
 			b = pomdp.generateInitialBelief(500);

@@ -559,6 +559,8 @@ public class Evidence {
 	
 	private Set<String> stringSet;
 
+	//TODO: Change this so that it behaves like the other replace function
+	//		and not modify this evidence.
 	public Evidence replace(Map<Object, Object> subst) {
 		Evidence result = this;
 		for (Object key : subst.keySet()) {

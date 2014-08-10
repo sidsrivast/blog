@@ -78,6 +78,7 @@ public class LiftedProperties {
 	}
 	
 	//my objs -> other objs
+	// TODO: what if otherProperties has more properties for a term
 	private Map<Object, Object> findNgoSubstitution(
 			Set<Object> myNgos,
 			Set<Object> otherNgos,
