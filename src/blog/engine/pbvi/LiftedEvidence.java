@@ -250,6 +250,9 @@ public class LiftedEvidence {
 		if (!(other instanceof LiftedEvidence))
 			return false;
 		LiftedEvidence otherEvidence = (LiftedEvidence) other;
+		if (!UBT.liftedPbvi) {
+			return this.evidence.equals((otherEvidence.evidence));
+		}
 		return this.evidence.equals(otherEvidence.evidence) &&
 				this.getSubstitution(otherEvidence.getLiftedProperties(), false) != null;
 	}

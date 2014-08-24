@@ -1096,9 +1096,15 @@ public abstract class AbstractPartialWorld implements PartialWorld {
 	}
 	public void addSkolemConstants(List<SkolemConstant> skolemConstants) {
 		for (SkolemConstant c : skolemConstants) {
+			if (observableToReferenced.containsKey(c.rv())) {
+				System.err.println("AbstractPartialWorld: Error reusing a skolem constant.");
+				System.err.println("World: " + this);
+				new Exception().printStackTrace();
+				System.exit(1);
+			}
 			observableToReferenced.put(c.rv(), c.rv());
-			this.skolemConstants.addAll(skolemConstants);
 		}
+		this.skolemConstants.addAll(skolemConstants);
 	}
 	
 	List<Term> skolemConstantTerms;
