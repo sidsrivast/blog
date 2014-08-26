@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.Collection;
 
 import blog.DBLOGUtil;
 import blog.common.Util;
@@ -19,6 +20,14 @@ import blog.model.Function;
 import blog.model.Term;
 import blog.model.Type;
 import blog.world.AbstractPartialWorld;
+
+import blog.bn.BayesNetVar;
+import blog.model.DecisionEvidenceStatement;
+import blog.model.ArgSpec;
+import blog.model.FuncAppTerm;
+import blog.model.TrueFormula;
+import blog.model.DecisionFunction;
+import java.util.ArrayList;
 
 public class Belief {
 	private PFEngineSampled pf;
@@ -77,7 +86,72 @@ public class Belief {
 			addState(s, b.getCount(s));
 		}
 	}
-	
+
+    /*
+	 * isApplicable takes in the action and checks if all the arguments of the action
+	 * exist in the AbstractPartialWorld, represented as an ObservableMap.
+	 * returns @true if all the arguments exist and @false otherwise.
+	 */
+    public Boolean isApplicable(Evidence action){
+        HashMap<BayesNetVar, BayesNetVar> presentTerms = null;
+        AbstractPartialWorld w = null;
+        for (State state : stateCounts.keySet()){
+            w = state.getWorld();
+            presentTerms = w.getObservableMap();
+            break;
+        }
+        Collection<FuncAppTerm> argumentsRequired = null;
+        for (DecisionEvidenceStatement decisions : action.getDecisionEvidence()){
+            argumentsRequired = decisions.getLeftSide().getSubExprs();
+            for (FuncAppTerm argument : argumentsRequired){
+                if (argument.containsRandomSymbol()){
+                    BayesNetVar randomSymbol = argument.getVariable();
+                    if (!(presentTerms.keySet().contains(randomSymbol))){
+                        System.out.println("Required symbol " + randomSymbol + " not found");
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    /*
+     * Creates the no_op action is it is defined in the model as
+     * decision Boolean no_op(Timestep t)
+     * Otherwise it will throw and IllegalState error
+     * Also assumes that all timesteps start with '@'
+     */
+    private Evidence no_op_initialize(Evidence actionToReplace){
+        try{
+            //Extracts no_op
+            DecisionFunction noop = (DecisionFunction) pomdp.getModel().getFuncsWithName("no_op").iterator().next();
+
+            //Gets the timestep -- Needs better implementation
+            ArrayList<FuncAppTerm> times = new ArrayList<FuncAppTerm>();
+            FuncAppTerm time = null;
+            for (DecisionEvidenceStatement decisions : actionToReplace.getDecisionEvidence()){
+                Collection<FuncAppTerm> argumentsRequired = decisions.getLeftSide().getSubExprs();
+                for (FuncAppTerm argument : argumentsRequired){
+                    if (!(argument.containsRandomSymbol()) && argument.toString().charAt(0) == '@'){
+                        time = argument;
+                        break;
+                    }
+                }
+            }
+
+            //Creates action no_op
+            FuncAppTerm left = new FuncAppTerm(noop,time);
+            DecisionEvidenceStatement decisionStatement = new DecisionEvidenceStatement(left, TrueFormula.TRUE);
+            Evidence action = new Evidence();
+            action.addDecisionEvidence(decisionStatement);
+            action.compile();
+            return action;
+        } catch (Exception e){
+            return null;
+        }
+    }
+
 	static Map<Integer, Integer> resampleStateCountStats = new HashMap<Integer, Integer>();
 	static Map<Integer, Integer> stateCountStats = new HashMap<Integer, Integer>();
 	public Belief sampleNextBelief(LiftedEvidence action) {
@@ -89,6 +163,14 @@ public class Belief {
 		
 		Timer.start("takeAction");
 		nextPF.beforeTakingEvidence();
+        nextPF.beforeTakingEvidence();
+        if (!(isApplicable(action))){
+            action = no_op_initialize(action);
+            if (action == null){
+                throw new IllegalStateException("Action: " + action + " is not applicable and no_op not found.");
+            }
+            System.out.println("Action is now: " + action);
+        }
 		nextPF.takeDecision(action);
 		nextPF.answer(pomdp.getQueries(getTimestep() + 1));
 		Timer.record("takeAction");
