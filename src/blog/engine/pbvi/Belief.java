@@ -128,7 +128,6 @@ public class Belief {
             DecisionFunction noop = (DecisionFunction) pomdp.getModel().getFuncsWithName("no_op").iterator().next();
 
             //Gets the timestep -- Needs better implementation
-            ArrayList<FuncAppTerm> times = new ArrayList<FuncAppTerm>();
             FuncAppTerm time = null;
             for (DecisionEvidenceStatement decisions : actionToReplace.getDecisionEvidence()){
                 Collection<FuncAppTerm> argumentsRequired = decisions.getLeftSide().getSubExprs();
