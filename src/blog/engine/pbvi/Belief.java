@@ -125,7 +125,7 @@ public class Belief {
     private Evidence no_op_initialize(Evidence actionToReplace){
         try{
             //Extracts no_op
-            DecisionFunction noop = (DecisionFunction) pomdp.getModel().getFuncsWithName("no_op").iterator().next();
+            DecisionFunction noop = (DecisionFunction) pomdp.getModel().getFuncsWithName("apply_no_op").iterator().next();
 
             //Gets the timestep -- Needs better implementation
             FuncAppTerm time = null;
@@ -162,7 +162,6 @@ public class Belief {
 		
 		Timer.start("takeAction");
 		nextPF.beforeTakingEvidence();
-        nextPF.beforeTakingEvidence();
         if (!(isApplicable(action))){
             action = no_op_initialize(action);
             if (action == null){
@@ -226,6 +225,7 @@ public class Belief {
 		Timer.record("BELIEF_PROP");
 		updateResampleStateCountStats(nextBelief);
 		updateStateCountStats(this);
+		((AbstractPartialWorld) (nextPF.particles.get(0).curWorld)).printLog();
 		return nextBelief;
 	}
 	

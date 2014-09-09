@@ -96,6 +96,7 @@ public class ObservabilitySignature {
 					if (m.get(arg) == null) {
 						System.out.println("maskVar missing " + var + " map:" + m);
 						System.out.println(w);
+						w.printLog();
 					}
 				}
 				else
