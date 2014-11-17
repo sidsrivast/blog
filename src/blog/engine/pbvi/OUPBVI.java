@@ -71,10 +71,6 @@ public class OUPBVI {
 		double bestValue = Double.NEGATIVE_INFINITY;
 		FiniteStatePolicy bestPolicy = null;
 		for (FiniteStatePolicy p : policies) {
-			if (!p.isApplicable(b)) {
-				if (printValues) System.out.println("bestPolicyValue: skipping inapplicable policy id: " + p.getID());
-				continue;
-			}
 			double value = evalPolicy(b, p);
 			if (printValues) System.out.println("bestPolicyValue: value: " + value + " policy id: " + p.getID());
 			if (value > bestValue) {
@@ -419,8 +415,6 @@ public class OUPBVI {
 					Double bestContingentValue = Double.NEGATIVE_INFINITY;
 					FiniteStatePolicy bestContingentPolicy = null;
 					for (FiniteStatePolicy p : oldPolicies) {
-						if (!p.isApplicable(next)) continue;
-						
 						Double v = evalPolicy(next, p);
 						if (v > bestContingentValue) {
 							bestContingentValue = v;
@@ -495,9 +489,7 @@ public class OUPBVI {
 		for (State state : states) {
 			numStatesUpdated++;
 			for (FiniteStatePolicy policy : policies) {
-				if (policy.isApplicable(state.getWorld())) {
-					evalPolicy(state, policy);
-				}
+				evalPolicy(state, policy);
 			}
 		}
 

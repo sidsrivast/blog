@@ -96,7 +96,7 @@ public class Particle {
 		((AbstractPartialWorld) curWorld).addSkolemConstants(evidence.getSkolemConstants());;
 		// System.out.println("Weight: " + weight);
 		// System.out.println("Updated world: " + curWorld);
-
+		((AbstractPartialWorld) curWorld).writeLog("Particle.take done", evidence.toString());
 	}
 
 	/**
