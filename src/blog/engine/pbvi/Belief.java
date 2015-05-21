@@ -53,9 +53,17 @@ public class Belief {
 		this.liftedProperties = liftedProperties;
 		
 		stateCounts = new HashMap<State, Integer>();
+		int numstates = 0;
 		for (TimedParticle tp : pf.particles) {
 			State s = new State((AbstractPartialWorld) tp.curWorld, tp.getTimestep());
 			addState(s);
+			numstates = numstates + 1;
+			if (numstates == 999){
+				@SuppressWarnings("unused")
+				int hello = 0;
+				
+			}
+			this.toString();
 		}
 		if (UBT.liftedPbvi) {
 			this.updateStatesLiftedProperties();
@@ -125,7 +133,7 @@ public class Belief {
     private Evidence no_op_initialize(Evidence actionToReplace){
         try{
             //Extracts no_op
-            DecisionFunction noop = (DecisionFunction) pomdp.getModel().getFuncsWithName("apply_no_op").iterator().next();
+            DecisionFunction noop = (DecisionFunction) pomdp.getModel().getFuncsWithName("no_op").iterator().next();
 
             //Gets the timestep -- Needs better implementation
             FuncAppTerm time = null;
@@ -162,6 +170,7 @@ public class Belief {
 		
 		Timer.start("takeAction");
 		nextPF.beforeTakingEvidence();
+        nextPF.beforeTakingEvidence();
         if (!(isApplicable(action))){
             action = no_op_initialize(action);
             if (action == null){
@@ -225,7 +234,6 @@ public class Belief {
 		Timer.record("BELIEF_PROP");
 		updateResampleStateCountStats(nextBelief);
 		updateStateCountStats(this);
-		((AbstractPartialWorld) (nextPF.particles.get(0).curWorld)).printLog();
 		return nextBelief;
 	}
 	
@@ -371,7 +379,8 @@ public class Belief {
 		Set<State> states = getStates();
 		String result = "";
 		for (State s : states) {
-			result += getCount(s) + " " + s.getWorld() + "\n";
+			int h = getCount(s);
+			result += h + " " + s.getWorld() + "\n";
 		}
 		result += "Lifted Properties: " + this.liftedProperties + "\n";
 		return result;

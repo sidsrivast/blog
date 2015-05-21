@@ -8,7 +8,7 @@ generating Timestep Time_Suspect(Suspect);
     else if t == @0 then
       = 1
     else if (exists Timestep pastT pastT < t & exists Suspect s Time_Suspect(s) == pastT & apply_interrogate(s, Prev(t)) == true) then 
-      ~ Poisson(2)
+      ~ Categorical({0 -> 0.5, 1 -> 0.5}) 
     else = 0
 };
 
@@ -51,7 +51,6 @@ random Real value(Timestep t) {
 
 decision Boolean apply_interrogate(Suspect s, Timestep t);
 decision Boolean apply_arrest(Suspect s, Timestep t);
-decision Boolean apply_no_op(Timestep t);
 
 random Integer Number_Suspect(Timestep t) ~ Cardinality({Suspect s : Time_Suspect(s)==t});
 random Boolean observable(Number_Suspect(Timestep t)) = true;

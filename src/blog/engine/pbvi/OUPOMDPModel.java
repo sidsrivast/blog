@@ -43,7 +43,7 @@ public class OUPOMDPModel {
 	private Properties properties;
 	
 	//TODO: get from model
-	private double gamma = 0.9;
+	private double gamma = 1.0;
 	
 	private TemporalQueriesInstantiator setQI;
 	
@@ -51,6 +51,7 @@ public class OUPOMDPModel {
 		this.model = model;
 		this.queries = queries;
 		this.properties = properties;
+		
 		
 		
 		for (Type typ: (List<Type>) model.getObsTyp()){

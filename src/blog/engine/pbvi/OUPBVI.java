@@ -71,6 +71,10 @@ public class OUPBVI {
 		double bestValue = Double.NEGATIVE_INFINITY;
 		FiniteStatePolicy bestPolicy = null;
 		for (FiniteStatePolicy p : policies) {
+			if (!p.isApplicable(b)) {
+				if (printValues) System.out.println("bestPolicyValue: skipping inapplicable policy id: " + p.getID());
+				continue;
+			}
 			double value = evalPolicy(b, p);
 			if (printValues) System.out.println("bestPolicyValue: value: " + value + " policy id: " + p.getID());
 			if (value > bestValue) {
@@ -96,6 +100,7 @@ public class OUPBVI {
 		int numIter = 0;
 		while (newBeliefs.size() < numBeliefs) {
 			newBeliefs = maxNormBeliefExpansion(newBeliefs);
+			System.out.println(newBeliefs);
 			System.out.println("run.expansion.iteration: " + numIter);
 			System.out.println("run.expansion.newsize: " + newBeliefs.size());
 			numIter++;
@@ -174,10 +179,13 @@ public class OUPBVI {
 		System.out.println("Value function's predicted value: " + bestPolicyValue.y);
 		
 		System.out.println("Evaluating best policy");
+		
 		evaluate(bestPolicyValue.x);
 		debug(Timer.getElapsedStr() + "[EVAL]");
 		debug(Timer.getElapsedStr() + "[EVAL_DONE]");
-		
+		System.out.println("hihihi");
+		//System.out.println(bestPolicyValue.x.toDotString("tree"));
+		bestPolicyValue.x.printPolicy("hi");
 		return policies;
 	}
 	
@@ -415,12 +423,17 @@ public class OUPBVI {
 					Double bestContingentValue = Double.NEGATIVE_INFINITY;
 					FiniteStatePolicy bestContingentPolicy = null;
 					for (FiniteStatePolicy p : oldPolicies) {
+						if (!p.isApplicable(next)) continue;
+						
 						Double v = evalPolicy(next, p);
 						if (v > bestContingentValue) {
 							bestContingentValue = v;
 							bestContingentPolicy = p;
 						}
 					}	
+					if(bestContingentPolicy == null){
+						System.out.println("ERROR ERROR ERROR");
+					}
 					double weight = ap.getObservationCount(obs);
 					policyMap.put(obs, bestContingentPolicy);
 					value += bestContingentValue * weight;
@@ -489,7 +502,9 @@ public class OUPBVI {
 		for (State state : states) {
 			numStatesUpdated++;
 			for (FiniteStatePolicy policy : policies) {
-				evalPolicy(state, policy);
+				if (policy.isApplicable(state.getWorld())) {
+					evalPolicy(state, policy);
+				}
 			}
 		}
 

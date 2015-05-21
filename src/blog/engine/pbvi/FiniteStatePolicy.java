@@ -1,7 +1,6 @@
 package blog.engine.pbvi;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -27,16 +26,44 @@ public class FiniteStatePolicy extends PolicyModel {
 	private Map<LiftedEvidence, FiniteStatePolicy> successors;
 	private Map<LiftedEvidence, String> notes;
 	private int id;
+	private Set<ArgSpec> requiredTerms;
 	
 	public FiniteStatePolicy(LiftedEvidence action, Map<LiftedEvidence, FiniteStatePolicy> successors) {
-		this.id = nextPolicyId;
-		nextPolicyId++;
+		this.id = count;
+		count++;
 		this.action = action;
 		this.successors = new HashMap<LiftedEvidence, FiniteStatePolicy>();
 		for (LiftedEvidence e : successors.keySet()) {
 			setNextPolicy(e, successors.get(e));
 		}
 		this.notes = new HashMap<LiftedEvidence, String>();
+		
+		requiredTerms = new HashSet<ArgSpec>();
+		DecisionEvidenceStatement a = (DecisionEvidenceStatement) action.getStoredEvidence().getDecisionEvidence().iterator().next();
+		FuncAppTerm f = ((FuncAppTerm) a.getLeftSide());
+		ArgSpec[] args = f.getArgs();
+		//requiredTerms.addAll(Arrays.asList(args));
+		for (ArgSpec arg : args) {
+			if (!(arg instanceof FuncAppTerm)) continue;
+			FuncAppTerm fat = (FuncAppTerm) arg;
+			if ((fat.getFunction() instanceof SkolemConstant)) requiredTerms.add(arg);
+			
+		}
+		for (LiftedEvidence e : successors.keySet()) {
+			Set<ArgSpec> futureRequiredTerms = new HashSet<ArgSpec>(successors.get(e).requiredTerms);
+			Set<? extends BayesNetVar> vars = e.getEvidence(0).getEvidenceVars(); //TODO
+			for (BayesNetVar v : vars) {
+				if (v instanceof BasicVar) {
+					Term t = ((BasicVar) v).getCanonicalTerm();
+					futureRequiredTerms.remove(t);
+				}
+				if (v instanceof DerivedVar) {
+					ArgSpec s = ((DerivedVar) v).getArgSpec();
+					futureRequiredTerms.remove(s);
+				}
+			}
+			requiredTerms.addAll(futureRequiredTerms);
+		}
 	}
 	
 	public AlphaVector getAlphaVector() { 
@@ -61,6 +88,27 @@ public class FiniteStatePolicy extends PolicyModel {
 	public String toDotString(String name) {
 		Map<FiniteStatePolicy, String> included = new HashMap<FiniteStatePolicy, String>();
 		return toDotStringHelper(name + "_" + id, included);
+	}
+	
+	
+	public void printPolicy(String name) {
+		this.printPolicy(name, "");
+	}
+	
+	private void printPolicy(String name, String space) {
+		System.out.println(space + "------------------------");
+		System.out.println(space + "Action is: " + action.getOrigGroundProps());
+		System.out.println(space + "--Printing Successors--");
+		space = space + "    ";
+		for (LiftedEvidence ev : this.successors.keySet()){
+			System.out.println(space + "Observed ~~");
+			System.out.println(space + ev);
+			this.successors.get(ev).printPolicy(name, space + "    ");
+			
+			
+		}
+		
+		
 	}
 	
 	private String toDotStringHelper(String name, Map<FiniteStatePolicy, String> included) {
@@ -95,6 +143,49 @@ public class FiniteStatePolicy extends PolicyModel {
 		return result;
 	}
 	
+	public Boolean isApplicable(AbstractPartialWorld w) {
+		Map<BayesNetVar, BayesNetVar> observables = w.getObservableMap();
+		List<Term> terms = w.getSkolemConstantTerms();
+		for (ArgSpec s : requiredTerms) {
+			Term t = (Term) s;
+			
+			//System.out.println(terms);
+			//System.out.println(requiredTerms);
+			if (!terms.contains(t)) return false;
+			/*
+			BayesNetVar var = s.getVariable();
+			if (!observables.containsKey(var)) {
+				Object o = w.getValue(var);
+				if (o == null) return false;
+				if (t.getType().isBuiltIn()) continue;
+				if (!t.getType().getGuaranteedObjects().contains(o))
+					return false;
+			}
+			*/
+		}
+		return true;
+	}
+	
+	public Boolean isApplicable(Belief b) {
+		for (State s : b.getStates())
+			return isApplicable(s.getWorld());
+		return false;
+	}
+
+	/*public FiniteStatePolicy getNextPolicy(LiftedEvidence latestEvidence) {
+		return successors.get(new LiftedEvidence(latestEvidence));
+	}*/
+	
+	//@TODO
+	public FiniteStatePolicy getApplicableNextPolicy(LiftedEvidence latestEvidence, Belief nextBelief) {
+		for (LiftedEvidence o : successors.keySet()) {
+			if (successors.get(o).isApplicable(nextBelief)) {
+				return successors.get(o);
+			}
+		}
+		return null;
+	}
+	
 	public boolean isLeafPolicy() {
 		return successors.isEmpty();
 	}
@@ -104,7 +195,7 @@ public class FiniteStatePolicy extends PolicyModel {
 		if (nextPolicy == null) {
 			System.err.println("You can't set next policy to null");
 			new Exception().printStackTrace();
-			//System.exit(0);
+			System.exit(0);
 		}
 		successors.put(obs, nextPolicy);
 	}
@@ -132,6 +223,7 @@ public class FiniteStatePolicy extends PolicyModel {
 	
 	public boolean merge(FiniteStatePolicy policy) {
 		 if (!action.equals(policy.action)) return false;
+		 if (!policy.requiredTerms.equals(this.requiredTerms)) return false;
 		 for (LiftedEvidence o : successors.keySet()) {
 			 if (policy.successors.containsKey(o) &&
 					 !successors.get(o).equals(policy.successors.get(o))) {
@@ -175,17 +267,14 @@ public class FiniteStatePolicy extends PolicyModel {
 		return id;
 	}
 	
-	private static int nextPolicyId = 0;
+	private static int count = 0;
 
+	public Set<ArgSpec> getRequiredTerms() {
+		return new HashSet<ArgSpec>(requiredTerms);
+	}
 
 	public Set<LiftedEvidence> getNextEvidences() {
 		return this.successors.keySet();
-	}
-
-	public FiniteStatePolicy getSomeNextPolicy() {
-		for (FiniteStatePolicy policy : this.successors.values())
-			return policy;
-		return null;
 	}
 	
 }

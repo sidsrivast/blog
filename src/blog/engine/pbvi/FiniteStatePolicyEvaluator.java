@@ -122,10 +122,20 @@ public class FiniteStatePolicyEvaluator {
 					
 					// There is no matching evidence in the policy.
 					// Find a random applicable next policy.
-					if (nextPolicy == null && !curState.ended()) {
-						nextPolicy = curPolicy.getSomeNextPolicy();
+					if (nextPolicy == null && !curState.ended()) { 
+						if (!UBT.liftedPbvi) {
+							nextPolicy = curPolicy.getApplicableNextPolicy(new LiftedEvidence(nextObs, policyHistory), curState);
+						} 
 						if (nextPolicy != null) {
 							addMissingObs(nextObs);
+						} else {
+							System.out.println("no next policy for evidence " + evidenceToMatch);
+							System.out.println("action just taken is " + nextAction + " groundedAction: " + groundedAction);
+							System.out.println("policy successors are ");
+							for (LiftedEvidence e : curPolicy.getNextEvidences())
+								System.out.println(e);
+							curValue = -10000D;
+							break;
 						}
 						//curPolicy.debug = true;
 						//LiftedEvidence x = curPolicy.getMatchingEvidence(liftedEvidence, policyHistory, curState);

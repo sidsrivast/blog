@@ -204,15 +204,21 @@ public class LiftedEvidence {
 		Map<Object, Object> subst = getSubstitution(b.getEvidenceHistory(), true);
 		
 		if (subst == null) {
-			if (debug) {
-				System.out.println("LiftedEvidence.getEvidence(b)" + b.getEvidenceHistory());
-				System.out.println("LiftedEvidence.getEvidence(b)" + prevLiftedProperties);
-				System.out.println("LiftedEvidence.getEvidence(b)" + originalTerms);
-			}
+			
+			//if (debug) {
+				System.out.println("SUBSITUTION IS NULL");
+				System.out.println("b.getEvidenceHistory(): " + b.getEvidenceHistory());
+				System.out.println("prevLiftedProperties: " + prevLiftedProperties);
+				System.out.println("Originalterms: " + originalTerms);
+			//}
 			return null;
 		}
 		
 		return grounded.replace(subst);
+	}
+	
+	public Evidence getOrigGroundProps(){
+		return originalGroundEvidence;
 	}
 	
 	/**

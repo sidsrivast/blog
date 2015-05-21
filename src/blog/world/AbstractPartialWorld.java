@@ -68,7 +68,6 @@ import blog.common.MapWithPreimages;
 import blog.common.MultiMap;
 import blog.common.Util;
 import blog.model.DependencyModel;
-import blog.model.Evidence;
 import blog.model.Function;
 import blog.model.Model;
 import blog.model.NonGuaranteedObject;
@@ -103,7 +102,7 @@ public abstract class AbstractPartialWorld implements PartialWorld {
 	public Set getInstantiatedVars() {
 		return Collections.unmodifiableSet(basicVarToValue.keySet());
 	}
-	
+
 	public boolean isInstantiated(BayesNetVar var) {
 		return basicVarToValue.containsKey(var)
 				|| derivedVarToValue.containsKey(var);
@@ -130,7 +129,11 @@ public abstract class AbstractPartialWorld implements PartialWorld {
 	}
 
 	public void setValue(BasicVar var, Object value) {
-		writeLog("setValue", var + " " + value);
+
+		// if (var.toString().contains("ApparentPos") && value == Model.NULL) {
+		// System.out.println("AbstractPartialWorld: " + var + " set to NULL!");
+		// System.out.println();
+		// }
 		Object oldValue = basicVarToValue.get(var);
 		if (value == null ? (oldValue == null) : value.equals(oldValue)) {
 			Util.debug("Setting var: " + var + " to " + value);
@@ -151,7 +154,6 @@ public abstract class AbstractPartialWorld implements PartialWorld {
 			basicVarToValue.put(var, value);
 			/*added by cheng*/
 			changedVarToValue.put(var, value);
-			
 			if (value instanceof NonGuaranteedObject && var instanceof RandFuncAppVar){
 				genObjToVar.put(value, var);
 			}
@@ -1066,7 +1068,6 @@ public abstract class AbstractPartialWorld implements PartialWorld {
 		newWorld.genObjToVar = (Map) ((HashMap) genObjToVar).clone();
 		
 		newWorld.skolemConstants = (List<SkolemConstant>) ((ArrayList<SkolemConstant>) skolemConstants).clone();
-		newWorld.log = (ArrayList<String>) log.clone();
 	}
 
 	public String toString() {
@@ -1175,7 +1176,11 @@ public abstract class AbstractPartialWorld implements PartialWorld {
 	}
 	
 	private boolean compareNgos(AbstractPartialWorld otherWorld) {
-		return null != getNgoProperties().findNgoSubstitution(otherWorld.getNgoProperties());
+		LiftedProperties x = getNgoProperties();
+		LiftedProperties y = otherWorld.getNgoProperties();
+		Map<Object,Object> sub = x.findNgoBijection(y);
+		boolean rtn = (null != sub);
+		return rtn;
 	}
 	
 	/**
@@ -1186,6 +1191,7 @@ public abstract class AbstractPartialWorld implements PartialWorld {
 	 * When updating this function, you should also consider updating innerStateHashcode
 	 * TODO maybe find a better place to put this; right now it is specific to comparing POMDP states
 	 */
+	
 	public boolean innerStateEquals(AbstractPartialWorld otherWorld, int maxTimestep) {
 		UBT.Stopwatch timer = new UBT.Stopwatch();
 		timer.startTimer();
@@ -1391,20 +1397,4 @@ public abstract class AbstractPartialWorld implements PartialWorld {
 	protected List listeners = new ArrayList(); // of WorldListener
 
 	protected Set idTypes;
-	
-	/**
-	 * The following are for debugging purposes.
-	 */
-
-	private ArrayList<String> log = new ArrayList<String>();
-	
-	public void writeLog(String key, String value) {
-		log.add(key + ": " + value);
-	}
-	
-	public void printLog() {
-		for (String entry : log) {
-			System.out.println(entry);
-		}
-	}
 }
