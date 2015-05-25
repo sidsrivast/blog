@@ -206,10 +206,10 @@ public class LiftedEvidence {
 		if (subst == null) {
 			
 			//if (debug) {
-				System.out.println("SUBSITUTION IS NULL");
-				System.out.println("b.getEvidenceHistory(): " + b.getEvidenceHistory());
-				System.out.println("prevLiftedProperties: " + prevLiftedProperties);
-				System.out.println("Originalterms: " + originalTerms);
+				//System.out.println("SUBSITUTION IS NULL");
+				//System.out.println("b.getEvidenceHistory(): " + b.getEvidenceHistory());
+				//System.out.println("prevLiftedProperties: " + prevLiftedProperties);
+				//System.out.println("Originalterms: " + originalTerms);
 			//}
 			return null;
 		}
@@ -239,7 +239,10 @@ public class LiftedEvidence {
 			toCompare = prevLiftedProperties;
 		else
 			toCompare = liftedProperties;
-		return toCompare.findNgoSubstitution(originalTerms, otherProperties);
+		Map<Object, Object> rtn = toCompare.findNgoSubstitution(originalTerms, otherProperties);
+		Map<Object, Object> rtn2 = toCompare.findNgoSubstitution(originalTerms, otherProperties);
+		
+		return rtn;
 	}
 	
 	@Deprecated
@@ -259,8 +262,9 @@ public class LiftedEvidence {
 		if (!UBT.liftedPbvi) {
 			return this.evidence.equals((otherEvidence.evidence));
 		}
-		return this.evidence.equals(otherEvidence.evidence) &&
-				this.getSubstitution(otherEvidence.getLiftedProperties(), false) != null;
+		boolean x = this.evidence.equals(otherEvidence.evidence);
+		boolean y = (this.getSubstitution(otherEvidence.getLiftedProperties(), false) != null);
+		return x && y;
 	}
 	
 	@Override

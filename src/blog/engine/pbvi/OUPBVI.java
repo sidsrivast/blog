@@ -642,7 +642,7 @@ public class OUPBVI {
 				}
 			}
 			System.out.println("Predicted: " + predictedValue);
-			System.out.println("Evaluated: " + evaluator.eval(b, p, 100, 1));
+			System.out.println("Evaluated: " + evaluator.eval(b, p, 100, 0));
 			System.out.println("Unhandled obs: " + evaluator.getMissingObs());
 		}
 		Timer.record("FINAL EVALUATION");

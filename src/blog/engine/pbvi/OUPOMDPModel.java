@@ -119,7 +119,9 @@ public class OUPOMDPModel {
 				DecisionEvidenceStatement decisionStatement = new DecisionEvidenceStatement(left, TrueFormula.TRUE);
 				action.addDecisionEvidence(decisionStatement);
 				action.compile();
-				actions.add(new LiftedEvidence(action, b.getEvidenceHistory()));
+				LiftedEvidence a = new LiftedEvidence(action, b.getEvidenceHistory());
+				actions.add(a);
+				//System.out.println("");
 			}
 			
 		}
@@ -223,6 +225,7 @@ public class OUPOMDPModel {
 		return reward;
 	}
 
+	//TODO: Fix application order
 	public double getAvgReward(Belief b, LiftedEvidence a) {
 		double total = 0;
 		int count = 0;

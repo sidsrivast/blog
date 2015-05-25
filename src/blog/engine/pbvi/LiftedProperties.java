@@ -39,10 +39,12 @@ public class LiftedProperties {
 	}
 	
 	public void addObject(Object obj) {
-		ngos.add(obj);
-		objToProperties.put(obj, new HashSet<RandFuncAppVar>());
-		objToContrainedObjs.put(obj, new HashSet<Object>());
-		objToPropLoc.put(obj, new HashSet<Object[]>());
+		if (!objToProperties.containsKey(obj)){
+			ngos.add(obj);
+			objToProperties.put(obj, new HashSet<RandFuncAppVar>());
+			objToContrainedObjs.put(obj, new HashSet<Object>());
+			objToPropLoc.put(obj, new HashSet<Object[]>());
+		}
 	}
 	
 	public Set<Object> getObjects() {
@@ -294,7 +296,8 @@ public class LiftedProperties {
 			for(Object[] objLocations : objToPropLoc.get(obj)){
 				Set<Object> cands = new HashSet<Object>();
 				if(!other.propToNgoPos.containsKey(objLocations[0])){
-					continue;
+					candidates.get(obj).retainAll(cands);
+					break;
 				}
 				for(ArrayList<Object[]> otherobjLocations : other.propToNgoPos.get(objLocations[0])){
 					for(Object[] otherLocation : otherobjLocations){
