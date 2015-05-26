@@ -274,7 +274,7 @@ public class LiftedEvidence {
 	
 	@Override
 	public String toString() {
-		return this.evidence.toString() + " Lifted: " + this.liftedProperties.toString();
+		return this.originalGroundEvidence.toString() +"\n"+ " Lifted: " + this.liftedProperties.toString() +"\n";
 	}
 
 	public Evidence getStoredEvidence() {
