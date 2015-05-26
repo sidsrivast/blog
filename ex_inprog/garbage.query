@@ -1,0 +1,6 @@
+query #{Garbage s : Time_Garbage(s)==t};
+query value(t);
+query reward(Prev(t));
+query exists Timestep pastT ((pastT < t) & (exists Garbage s (Time_Garbage(s) == pastT & isShiny(s, t) & false))) & false;
+query #{Garbage s : ((Time_Garbage(s) == t) & isRecyclable(s) & true)};
+query end_state(t);
