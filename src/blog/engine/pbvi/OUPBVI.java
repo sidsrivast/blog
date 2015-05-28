@@ -322,7 +322,8 @@ public class OUPBVI {
 			int t) {
 		Set<FiniteStatePolicy> newPolicies = new HashSet<FiniteStatePolicy>();
 		for (Belief b : beliefs) {
-			newPolicies = createMergedPolicySet(newPolicies, singleBackupForBelief(oldPolicies, b, t));
+			FiniteStatePolicy p = singleBackupForBelief(oldPolicies, b, t);
+			newPolicies = createMergedPolicySet(newPolicies, p);
 			System.out.println("handled bid" + beliefIDs.get(b));
 		}
 		System.out.println("SingleBackup numbeliefs: " + beliefs.size());

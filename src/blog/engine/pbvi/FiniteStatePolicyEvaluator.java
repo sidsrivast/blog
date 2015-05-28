@@ -129,7 +129,8 @@ public class FiniteStatePolicyEvaluator {
 						if (nextPolicy != null) {
 							addMissingObs(nextObs);
 						} else {
-							p.printPolicy("pol: ");
+							System.out.println("+++++++++++++++++++++++++++++++++++++++++++++++");
+							curPolicy.printPolicy("pol: ");
 							System.out.println("no next policy for evidence " + evidenceToMatch);
 							System.out.println("action just taken is " + nextAction + " groundedAction: " + groundedAction);
 							System.out.println("policy successors are ");
